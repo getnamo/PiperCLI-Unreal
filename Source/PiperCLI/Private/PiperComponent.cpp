@@ -47,11 +47,11 @@ void UPiperComponent::InitializeComponent()
 
 		if (ResultString.Len() == OutputBytes.Num())
 		{
-			OnOutputBytes.Broadcast(OutputBytes);
+			OnOutput.Broadcast(ResultString);
 		}
 		else
 		{
-			OnOutput.Broadcast(FString(OutputBytes.Num(), (UTF8CHAR*)OutputBytes.GetData()));
+			OnOutputBytes.Broadcast(OutputBytes);
 		}
 	};
 
