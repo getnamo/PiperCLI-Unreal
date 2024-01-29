@@ -15,6 +15,9 @@ struct FProcessParams
 	FString Params;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FProcessParams")
+	FString InitialStdInput;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FProcessParams")
 	bool bLaunchDetached;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FProcessParams")
@@ -32,6 +35,9 @@ struct FProcessParams
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FProcessParams")
 	bool bOutputToGameThread = true;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FProcessParams")
+	bool bProcessInBytes = false;
+
 	EAsyncExecution ExecutionContext = EAsyncExecution::Thread;
 };
 
@@ -42,6 +48,9 @@ struct FProcessState
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FProcessState")
 	int32 ProcessId = -1;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FProcessState")
+	FString OutputHistory;
 
 	//These are not blueprint accessible
 	FProcHandle ProcessHandle;
@@ -60,6 +69,7 @@ public:
 
 	TFunction<void(const int32 ProcessId, bool StartSucceded)> OnProcessBegin = nullptr;
 	TFunction<void(const int32 ProcessId, const FString& OutputString)> OnProcessOutput = nullptr;
+	TFunction<void(const int32 ProcessId, const TArray<uint8>& OutputBytes)> OnProcessOutputBytes = nullptr;
 	TFunction<void(const int32 ProcessId, int32 ReturnCode)> OnProcessEnd = nullptr;
 
 	void StartProcess(const FProcessParams& InParams);

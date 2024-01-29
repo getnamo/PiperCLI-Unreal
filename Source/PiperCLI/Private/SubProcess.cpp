@@ -25,8 +25,6 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 		void* ReadPipe = nullptr;
 		void* WritePipe = nullptr;
 		FPlatformProcess::CreatePipe(ReadPipe, WritePipe);
-
-		FString Output;
 	
 		State.ProcessHandle = FPlatformProcess::CreateProc(
 			*Params.Url, 
@@ -38,14 +36,18 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 			Params.PriorityModifier,
 			*Params.OptionalWorkingDirectory,
 			WritePipe,
-			ReadPipe,
-			WritePipe);
+			ReadPipe);
 
 		State.WritePipe = WritePipe;
 		State.ReadPipe = ReadPipe;
 
 		State.ProcessId = OutId;
 		const int32 LocalId = State.ProcessId;
+
+		if (!Params.InitialStdInput.IsEmpty())
+		{
+			SendInput(Params.InitialStdInput);
+		}
 
 		if (State.ProcessHandle.IsValid()) 
 		{
@@ -66,30 +68,66 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 			return;
 		}
 
-		FString LatestOutput;
-
-		do 
+		if (Params.bProcessInBytes)
 		{
-			LatestOutput = FPlatformProcess::ReadPipe(ReadPipe);
-			Output += LatestOutput;
-
-			if (!LatestOutput.IsEmpty())
+			//Buffer path
+			TArray<uint8> Buffer;
+			do
 			{
-				if (Params.bOutputToGameThread)
+				bool bSuccess = FPlatformProcess::ReadPipeToArray(State.ReadPipe, Buffer);
+
+				if (bSuccess)
 				{
-					const FString SafeLatestOutput = LatestOutput;
-					//for now gamethread queue the output, Allow non-gamethread returns in future
-					AsyncTask(ENamedThreads::GameThread, [&, LocalId, SafeLatestOutput]
+					if (Params.bOutputToGameThread)
 					{
-						OnProcessOutput(LocalId, SafeLatestOutput);
-					});
+						FThreadSafeBool bEmitComplete;
+
+						//for now gamethread queue the output, Allow non-gamethread returns in future
+						AsyncTask(ENamedThreads::GameThread, [&, LocalId]
+						{
+							OnProcessOutputBytes(LocalId, Buffer);
+							bEmitComplete = true;
+						});
+
+						while (!bEmitComplete)
+						{
+							FPlatformProcess::Sleep(0.0001f);
+						}
+					}
+					else
+					{
+						OnProcessOutputBytes(LocalId, Buffer);
+					}
 				}
-				else
+			} while (FPlatformProcess::IsProcRunning(State.ProcessHandle));
+		}
+		else
+		{
+			//String path
+			FString LatestOutput;
+			do
+			{
+				LatestOutput = FPlatformProcess::ReadPipe(State.ReadPipe);
+				State.OutputHistory += LatestOutput;
+
+				if (!LatestOutput.IsEmpty())
 				{
-					OnProcessOutput(LocalId, LatestOutput);
+					if (Params.bOutputToGameThread)
+					{
+						const FString SafeLatestOutput = LatestOutput;
+						//for now gamethread queue the output, Allow non-gamethread returns in future
+						AsyncTask(ENamedThreads::GameThread, [&, LocalId, SafeLatestOutput]
+							{
+								OnProcessOutput(LocalId, SafeLatestOutput);
+							});
+					}
+					else
+					{
+						OnProcessOutput(LocalId, LatestOutput);
+					}
 				}
-			}
-		} while (FPlatformProcess::IsProcRunning(State.ProcessHandle) || !LatestOutput.IsEmpty());
+			} while (FPlatformProcess::IsProcRunning(State.ProcessHandle) || !LatestOutput.IsEmpty());
+		}
 
 		int ExitCode = -1;
 		bool ReturnCodeValid = FPlatformProcess::GetProcReturnCode(State.ProcessHandle, &ExitCode);
