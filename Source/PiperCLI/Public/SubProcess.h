@@ -29,6 +29,9 @@ struct FProcessParams
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FProcessParams")
 	FString OptionalWorkingDirectory;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FProcessParams")
+	bool bOutputToGameThread = true;
+
 	EAsyncExecution ExecutionContext = EAsyncExecution::Thread;
 };
 
@@ -44,6 +47,7 @@ struct FProcessState
 	FProcHandle ProcessHandle;
 	void* WritePipe;
 	void* ReadPipe;
+	bool bIsBeingDestroyed = false;
 };
 
 

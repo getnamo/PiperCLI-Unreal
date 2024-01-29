@@ -9,6 +9,8 @@ FSubProcessHandler::FSubProcessHandler()
 
 FSubProcessHandler::~FSubProcessHandler()
 {
+	State.bIsBeingDestroyed = true;
+
 	StopProcess();
 }
 
@@ -28,7 +30,7 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 
 		void* ReadPipe = nullptr;
 		void* WritePipe = nullptr;
-		FPlatformProcess::CreatePipe(WritePipe, ReadPipe);
+		FPlatformProcess::CreatePipe(ReadPipe, WritePipe);
 
 		FString Output;
 	
@@ -40,9 +42,10 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 			Params.bLaunchReallyHidden,
 			&OutId,
 			Params.PriorityModifier,
-			*Params.OptionalWorkingDirectory,
+			nullptr,//*Params.OptionalWorkingDirectory,
 			WritePipe,
-			ReadPipe);
+			ReadPipe,
+			WritePipe);
 
 		State.WritePipe = WritePipe;
 		State.ReadPipe = ReadPipe;
@@ -59,7 +62,7 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 		}
 		else
 		{
-			FPlatformProcess::ClosePipe(State.WritePipe, State.ReadPipe);
+			FPlatformProcess::ClosePipe(State.ReadPipe, State.WritePipe);
 			AsyncTask(ENamedThreads::GameThread, [&, LocalId]
 			{
 				OnProcessBegin(LocalId, false);
@@ -68,23 +71,30 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 			return;
 		}
 
-		FString LatestOutput = FPlatformProcess::ReadPipe(ReadPipe);
-		while (FPlatformProcess::IsProcRunning(State.ProcessHandle) || !LatestOutput.IsEmpty())
+		FString LatestOutput;
+
+		do 
 		{
-			Output += LatestOutput;
 			LatestOutput = FPlatformProcess::ReadPipe(ReadPipe);
+			Output += LatestOutput;
 
 			if (!LatestOutput.IsEmpty())
 			{
-				const FString SafeLatestOutput = LatestOutput;
-
-				//for now gamethread queue the output, Allow non-gamethread returns in future
-				AsyncTask(ENamedThreads::GameThread, [&, LocalId, SafeLatestOutput]
+				if (Params.bOutputToGameThread)
 				{
-					OnProcessOutput(LocalId, SafeLatestOutput);
-				});
+					const FString SafeLatestOutput = LatestOutput;
+					//for now gamethread queue the output, Allow non-gamethread returns in future
+					AsyncTask(ENamedThreads::GameThread, [&, LocalId, SafeLatestOutput]
+					{
+						OnProcessOutput(LocalId, SafeLatestOutput);
+					});
+				}
+				else
+				{
+					OnProcessOutput(LocalId, LatestOutput);
+				}
 			}
-		}
+		} while (FPlatformProcess::IsProcRunning(State.ProcessHandle) || !LatestOutput.IsEmpty());
 
 		int ExitCode = -1;
 		bool ReturnCodeValid = FPlatformProcess::GetProcReturnCode(State.ProcessHandle, &ExitCode);
@@ -93,11 +103,15 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 		{
 			ExitCode = -1;
 		}
-		AsyncTask(ENamedThreads::GameThread, [this, LocalId, ExitCode]
+		//Only emit if we're not cleaning up
+		if (!State.bIsBeingDestroyed)
 		{
-			OnProcessEnd(LocalId, ExitCode);
-		});
-	});
+			AsyncTask(ENamedThreads::GameThread, [this, LocalId, ExitCode]
+			{
+				OnProcessEnd(LocalId, ExitCode);
+			});
+
+		}});
 
 }
 
@@ -106,7 +120,7 @@ void FSubProcessHandler::StopProcess()
 	if (State.ProcessHandle.IsValid())
 	{
 		//Maybe queue input to bg thread?
+		FPlatformProcess::ClosePipe(State.ReadPipe, State.WritePipe);
 		FPlatformProcess::TerminateProc(State.ProcessHandle, false);
-		FPlatformProcess::ClosePipe(State.WritePipe, State.ReadPipe);
 	}
 }
