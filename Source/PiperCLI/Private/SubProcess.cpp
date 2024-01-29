@@ -56,7 +56,8 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 		}
 		else
 		{
-			FPlatformProcess::ClosePipe(State.ReadPipe, State.WritePipe);
+			ClosePipes();
+
 			AsyncTask(ENamedThreads::GameThread, [&, LocalId]
 			{
 				OnProcessBegin(LocalId, false);
@@ -105,8 +106,10 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 				OnProcessEnd(LocalId, ExitCode);
 			});
 
-		}});
+		}
 
+		ClosePipes();
+	});
 }
 
 void FSubProcessHandler::StopProcess()
@@ -114,7 +117,33 @@ void FSubProcessHandler::StopProcess()
 	if (State.ProcessHandle.IsValid())
 	{
 		//Maybe queue input to bg thread?
-		FPlatformProcess::ClosePipe(State.ReadPipe, State.WritePipe);
 		FPlatformProcess::TerminateProc(State.ProcessHandle, false);
+		ClosePipes();
+	}
+}
+
+void FSubProcessHandler::SendInput(const TArray<uint8>& Bytes)
+{
+	if (State.ProcessHandle.IsValid() && FPlatformProcess::IsProcRunning(State.ProcessHandle))
+	{
+		FPlatformProcess::WritePipe(State.WritePipe, Bytes.GetData(), Bytes.Num());
+	}
+}
+
+void FSubProcessHandler::SendInput(const FString& Text)
+{
+	if (State.ProcessHandle.IsValid() && FPlatformProcess::IsProcRunning(State.ProcessHandle))
+	{
+		FPlatformProcess::WritePipe(State.WritePipe, Text);
+	}
+}
+
+void FSubProcessHandler::ClosePipes()
+{
+	if (State.ReadPipe != nullptr && State.WritePipe != nullptr)
+	{
+		FPlatformProcess::ClosePipe(State.ReadPipe, State.WritePipe);
+		State.ReadPipe = nullptr;
+		State.WritePipe = nullptr;
 	}
 }

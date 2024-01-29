@@ -63,11 +63,15 @@ public:
 	TFunction<void(const int32 ProcessId, int32 ReturnCode)> OnProcessEnd = nullptr;
 
 	void StartProcess(const FProcessParams& InParams);
-
 	void StopProcess();
+
+	void SendInput(const TArray<uint8>& Bytes);
+	void SendInput(const FString& Text);
 
 	FProcessParams Params;
 
 protected:
+
+	void ClosePipes();
 	FProcessState State;
 };

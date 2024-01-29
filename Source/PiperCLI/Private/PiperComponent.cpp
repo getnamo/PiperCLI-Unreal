@@ -17,6 +17,11 @@ UPiperComponent::~UPiperComponent()
 }
 
 
+void UPiperComponent::SendInput(const FString& Text)
+{
+	ProcessHandler->SendInput(Text);
+}
+
 void UPiperComponent::InitializeComponent()
 {
 	Super::InitializeComponent();

@@ -29,6 +29,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
 	bool bStartPiperOnBeginPlay = true;
 
+	//In either json or raw format
+	UFUNCTION(BlueprintCallable, Category = "Piper Functions")
+	void SendInput(const FString& Text);
 
 	virtual void InitializeComponent() override;
 	virtual void UninitializeComponent() override;
