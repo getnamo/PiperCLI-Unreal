@@ -1,5 +1,6 @@
 #include "PiperComponent.h"
 #include "Misc/Paths.h"
+#include "Misc/FileHelper.h"
 
 
 UPiperComponent::UPiperComponent(const FObjectInitializer& init) : UActorComponent(init)
@@ -41,15 +42,17 @@ void UPiperComponent::InitializeComponent()
 
 	ProcessHandler->OnProcessOutputBytes = [this](const int32 ProcessId, const TArray<uint8>& OutputBytes)
 	{
-		//Lame separator for now
-		//if (OutputBytes.Num() > 512) 
-		//{
+		FString ResultString;
+		FFileHelper::BufferToString(ResultString, OutputBytes.GetData(), OutputBytes.Num());
+
+		if (ResultString.Len() == OutputBytes.Num())
+		{
 			OnOutputBytes.Broadcast(OutputBytes);
-		//}
-		//else
-		//{
-		//	OnOutput.Broadcast(FString(OutputBytes.Num(), (UTF8CHAR*)OutputBytes.GetData()));
-		//}
+		}
+		else
+		{
+			OnOutput.Broadcast(FString(OutputBytes.Num(), (UTF8CHAR*)OutputBytes.GetData()));
+		}
 	};
 
 	ProcessHandler->OnProcessEnd = [this](const int32 ProcessId, int32 ReturnCode)
