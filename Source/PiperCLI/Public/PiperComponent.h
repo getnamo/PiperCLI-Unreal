@@ -6,6 +6,7 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPiperBeginProcessSignature, const FString&, StartUpState);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPiperOutputSignature, const FString&, OutputMessage);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPiperOutputBinarySignature, const TArray<uint8>&, Buffer);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPiperEndProcessSignature, const FString&, EndState);
 
 UCLASS(BlueprintType, ClassGroup = "TTS", meta = (BlueprintSpawnableComponent))
@@ -18,10 +19,15 @@ public:
 	FPiperOutputSignature OnOutput;
 
 	UPROPERTY(BlueprintAssignable, Category = "Piper Events")
-	FPiperBeginProcessSignature OnBeginProcessing;
+	FPiperOutputBinarySignature OnOutputBytes;
+
 
 	UPROPERTY(BlueprintAssignable, Category = "Piper Events")
 	FPiperEndProcessSignature OnEndProcessing;
+
+	UPROPERTY(BlueprintAssignable, Category = "Piper Events")
+	FPiperBeginProcessSignature OnBeginProcessing;
+
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
 	FProcessParams PiperCLIParams;

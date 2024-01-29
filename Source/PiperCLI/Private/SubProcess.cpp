@@ -24,12 +24,18 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 
 		void* ReadPipe = nullptr;
 		void* WritePipe = nullptr;
-		FPlatformProcess::CreatePipe(ReadPipe, WritePipe);
+		FPlatformProcess::CreatePipe(ReadPipe, WritePipe, false);
+
+		//Pre-pipe
+		if (!Params.InitialStdInput.IsEmpty())
+		{
+			FPlatformProcess::WritePipe(WritePipe, Params.InitialStdInput);
+		}
 	
 		State.ProcessHandle = FPlatformProcess::CreateProc(
-			*Params.Url, 
+			*Params.Url,
 			*Params.Params,
-			Params.bLaunchDetached, 
+			Params.bLaunchDetached,
 			Params.bLaunchHidden,
 			Params.bLaunchReallyHidden,
 			&OutId,
@@ -37,17 +43,13 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 			*Params.OptionalWorkingDirectory,
 			WritePipe,
 			ReadPipe);
+			//ReadPipe);
 
 		State.WritePipe = WritePipe;
 		State.ReadPipe = ReadPipe;
-
 		State.ProcessId = OutId;
 		const int32 LocalId = State.ProcessId;
 
-		if (!Params.InitialStdInput.IsEmpty())
-		{
-			SendInput(Params.InitialStdInput);
-		}
 
 		if (State.ProcessHandle.IsValid()) 
 		{
@@ -107,8 +109,18 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 			FString LatestOutput;
 			do
 			{
+				if (Params.bWaitForSend)
+				{
+					WaitLockActive = true;
+
+					while (WaitLockActive)
+					{
+						FPlatformProcess::Sleep(0.1);
+					}
+				}
+
 				LatestOutput = FPlatformProcess::ReadPipe(State.ReadPipe);
-				State.OutputHistory += LatestOutput;
+				State.OutputHistory += LatestOutput;				
 
 				if (!LatestOutput.IsEmpty())
 				{
@@ -122,7 +134,10 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 					}
 					else
 					{
-						OnProcessOutput(LocalId, LatestOutput);
+						if (OnProcessOutput)
+						{
+							OnProcessOutput(LocalId, LatestOutput);
+						}
 					}
 				}
 			} while (FPlatformProcess::IsProcRunning(State.ProcessHandle) || !LatestOutput.IsEmpty());
@@ -172,6 +187,7 @@ void FSubProcessHandler::SendInput(const FString& Text)
 	{
 		FPlatformProcess::WritePipe(State.WritePipe, Text);
 	}
+	WaitLockActive = false;
 }
 
 void FSubProcessHandler::ClosePipes()

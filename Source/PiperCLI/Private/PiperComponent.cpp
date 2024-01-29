@@ -37,6 +37,19 @@ void UPiperComponent::InitializeComponent()
 		OnOutput.Broadcast(OutputString);
 	};
 
+	ProcessHandler->OnProcessOutputBytes = [this](const int32 ProcessId, const TArray<uint8>& OutputBytes)
+	{
+		//Lame separator for now
+		if (OutputBytes.Num() > 255) 
+		{
+			OnOutputBytes.Broadcast(OutputBytes);
+		}
+		else
+		{
+			OnOutput.Broadcast(FString(OutputBytes.Num(), (UTF8CHAR*)OutputBytes.GetData()));
+		}
+	};
+
 	ProcessHandler->OnProcessEnd = [this](const int32 ProcessId, int32 ReturnCode)
 	{
 		OnEndProcessing.Broadcast(FString::Printf(TEXT("ReturnCode: %d"), ReturnCode));

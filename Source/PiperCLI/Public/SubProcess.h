@@ -38,6 +38,9 @@ struct FProcessParams
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FProcessParams")
 	bool bProcessInBytes = false;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FProcessParams")
+	bool bWaitForSend = false;
+
 	EAsyncExecution ExecutionContext = EAsyncExecution::Thread;
 };
 
@@ -84,4 +87,6 @@ protected:
 
 	void ClosePipes();
 	FProcessState State;
+
+	FThreadSafeBool WaitLockActive;
 };
