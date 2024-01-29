@@ -24,13 +24,26 @@ struct FProcessParams
 	bool bLaunchReallyHidden;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FProcessParams")
-	int32 ProcessId = -1;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FProcessParams")
 	int32 PriorityModifier;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FProcessParams")
 	FString OptionalWorkingDirectory;
+
+	EAsyncExecution ExecutionContext = EAsyncExecution::Thread;
+};
+
+USTRUCT(BlueprintType)
+struct FProcessState
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FProcessState")
+	int32 ProcessId = -1;
+
+	//These are not blueprint accessible
+	FProcHandle ProcessHandle;
+	void* WritePipe;
+	void* ReadPipe;
 };
 
 
@@ -41,9 +54,9 @@ public:
 	FSubProcessHandler();
 	~FSubProcessHandler();
 
-	TFunction<void(const FString& ProcessId, bool StartSucceded)> OnProcessBegin;
-	TFunction<void(const FString& ProcessId, const FString& OutputString)> OnProcessOutput;
-	TFunction<void(const FString& ProcessId, int32 ReturnResult)> OnProcessEnd;
+	TFunction<void(const int32 ProcessId, bool StartSucceded)> OnProcessBegin = nullptr;
+	TFunction<void(const int32 ProcessId, const FString& OutputString)> OnProcessOutput = nullptr;
+	TFunction<void(const int32 ProcessId, int32 ReturnCode)> OnProcessEnd = nullptr;
 
 	void StartProcess(const FProcessParams& InParams);
 
@@ -51,7 +64,6 @@ public:
 
 	FProcessParams Params;
 
-private:
-
-	FProcHandle ProcessHandle;
+protected:
+	FProcessState State;
 };
