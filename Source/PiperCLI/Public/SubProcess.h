@@ -57,8 +57,10 @@ struct FProcessState
 
 	//These are not blueprint accessible
 	FProcHandle ProcessHandle;
-	void* WritePipe;
-	void* ReadPipe;
+	void* OutputPipeWrite;
+	void* OutputPipeRead;
+	void* InputPipeWrite;
+	void* InputPipeRead;
 	bool bIsBeingDestroyed = false;
 };
 

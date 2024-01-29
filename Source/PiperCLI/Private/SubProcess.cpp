@@ -22,14 +22,18 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 	{
 		uint32 OutId;
 
-		void* ReadPipe = nullptr;
-		void* WritePipe = nullptr;
-		FPlatformProcess::CreatePipe(ReadPipe, WritePipe, false);
+		void* InputPipeRead = nullptr;
+		void* InputPipeWrite = nullptr;
+		void* OutputPipeRead = nullptr;
+		void* OutputPipeWrite = nullptr;
+
+		FPlatformProcess::CreatePipe(OutputPipeRead, OutputPipeWrite, false);
+		FPlatformProcess::CreatePipe(InputPipeRead, InputPipeWrite, true);
 
 		//Pre-pipe
 		if (!Params.InitialStdInput.IsEmpty())
 		{
-			FPlatformProcess::WritePipe(WritePipe, Params.InitialStdInput);
+			FPlatformProcess::WritePipe(InputPipeWrite, Params.InitialStdInput);
 		}
 	
 		State.ProcessHandle = FPlatformProcess::CreateProc(
@@ -41,12 +45,13 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 			&OutId,
 			Params.PriorityModifier,
 			*Params.OptionalWorkingDirectory,
-			WritePipe,
-			ReadPipe);
-			//ReadPipe);
+			OutputPipeWrite,
+			InputPipeRead);
 
-		State.WritePipe = WritePipe;
-		State.ReadPipe = ReadPipe;
+		State.InputPipeRead = InputPipeRead;
+		State.InputPipeWrite = InputPipeWrite;
+		State.OutputPipeRead = OutputPipeRead;
+		State.OutputPipeWrite = OutputPipeWrite;
 		State.ProcessId = OutId;
 		const int32 LocalId = State.ProcessId;
 
@@ -76,7 +81,7 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 			TArray<uint8> Buffer;
 			do
 			{
-				bool bSuccess = FPlatformProcess::ReadPipeToArray(State.ReadPipe, Buffer);
+				bool bSuccess = FPlatformProcess::ReadPipeToArray(State.OutputPipeRead, Buffer);
 
 				if (bSuccess)
 				{
@@ -119,7 +124,7 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 					}
 				}
 
-				LatestOutput = FPlatformProcess::ReadPipe(State.ReadPipe);
+				LatestOutput = FPlatformProcess::ReadPipe(State.OutputPipeRead);
 				State.OutputHistory += LatestOutput;				
 
 				if (!LatestOutput.IsEmpty())
@@ -177,7 +182,7 @@ void FSubProcessHandler::SendInput(const TArray<uint8>& Bytes)
 {
 	if (State.ProcessHandle.IsValid() && FPlatformProcess::IsProcRunning(State.ProcessHandle))
 	{
-		FPlatformProcess::WritePipe(State.WritePipe, Bytes.GetData(), Bytes.Num());
+		FPlatformProcess::WritePipe(State.InputPipeWrite, Bytes.GetData(), Bytes.Num());
 	}
 }
 
@@ -185,17 +190,23 @@ void FSubProcessHandler::SendInput(const FString& Text)
 {
 	if (State.ProcessHandle.IsValid() && FPlatformProcess::IsProcRunning(State.ProcessHandle))
 	{
-		FPlatformProcess::WritePipe(State.WritePipe, Text);
+		FPlatformProcess::WritePipe(State.InputPipeWrite, Text);
 	}
 	WaitLockActive = false;
 }
 
 void FSubProcessHandler::ClosePipes()
 {
-	if (State.ReadPipe != nullptr && State.WritePipe != nullptr)
+	if (State.InputPipeRead != nullptr && State.InputPipeWrite != nullptr)
 	{
-		FPlatformProcess::ClosePipe(State.ReadPipe, State.WritePipe);
-		State.ReadPipe = nullptr;
-		State.WritePipe = nullptr;
+		FPlatformProcess::ClosePipe(State.InputPipeRead, State.InputPipeWrite);
+		State.InputPipeRead = nullptr;
+		State.InputPipeWrite = nullptr;
+	}
+	if (State.OutputPipeRead != nullptr && State.OutputPipeWrite != nullptr)
+	{
+		FPlatformProcess::ClosePipe(State.OutputPipeRead, State.OutputPipeWrite);
+		State.OutputPipeRead = nullptr;
+		State.OutputPipeWrite = nullptr;
 	}
 }

@@ -9,6 +9,8 @@ UPiperComponent::UPiperComponent(const FObjectInitializer& init) : UActorCompone
 
 	PiperCLIParams.OptionalWorkingDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + TEXT("Plugins/PiperCLI-Unreal/ThirdParty/Piper/Win64/"));
 	PiperCLIParams.Url = PiperCLIParams.OptionalWorkingDirectory  + TEXT("piper.exe");
+	PiperCLIParams.bLaunchHidden = true;
+	PiperCLIParams.bLaunchReallyHidden = true;
 }
 
 UPiperComponent::~UPiperComponent()
@@ -40,14 +42,14 @@ void UPiperComponent::InitializeComponent()
 	ProcessHandler->OnProcessOutputBytes = [this](const int32 ProcessId, const TArray<uint8>& OutputBytes)
 	{
 		//Lame separator for now
-		if (OutputBytes.Num() > 255) 
-		{
+		//if (OutputBytes.Num() > 512) 
+		//{
 			OnOutputBytes.Broadcast(OutputBytes);
-		}
-		else
-		{
-			OnOutput.Broadcast(FString(OutputBytes.Num(), (UTF8CHAR*)OutputBytes.GetData()));
-		}
+		//}
+		//else
+		//{
+		//	OnOutput.Broadcast(FString(OutputBytes.Num(), (UTF8CHAR*)OutputBytes.GetData()));
+		//}
 	};
 
 	ProcessHandler->OnProcessEnd = [this](const int32 ProcessId, int32 ReturnCode)
