@@ -7,7 +7,8 @@ UPiperComponent::UPiperComponent(const FObjectInitializer& init) : UActorCompone
 	bWantsInitializeComponent = true;
 	bAutoActivate = true;
 
-	PiperCLIParams.Url = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + TEXT("ThirdParty/Piper/Win64/piper.exe"));
+	PiperCLIParams.OptionalWorkingDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + TEXT("Plugins/PiperCLI-Unreal/ThirdParty/Piper/Win64/"));
+	PiperCLIParams.Url = PiperCLIParams.OptionalWorkingDirectory  + TEXT("piper.exe");
 }
 
 UPiperComponent::~UPiperComponent()
@@ -23,7 +24,7 @@ void UPiperComponent::InitializeComponent()
 
 	ProcessHandler->OnProcessBegin = [this](const int32 ProcessId, bool bStartSucceded)
 	{
-		OnBeginProcessing.Broadcast(FString::Printf(TEXT("Sucess: %d"), bStartSucceded));
+		OnBeginProcessing.Broadcast(FString::Printf(TEXT("Startup Success: %d"), bStartSucceded));
 	};
 
 	ProcessHandler->OnProcessOutput = [this](const int32 ProcessId, const FString & OutputString)
