@@ -2,6 +2,7 @@
 
 #include "PiperCLI.h"
 
+
 #define LOCTEXT_NAMESPACE "FPiperCLIModule"
 
 void FPiperCLIModule::StartupModule()
