@@ -20,12 +20,6 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 
 	Async(Params.ExecutionContext, [this]
 	{
-
-		/*AsyncTask(ENamedThreads::GameThread, []
-		{
-		});*/
-	
-		
 		uint32 OutId;
 
 		void* ReadPipe = nullptr;
@@ -42,7 +36,7 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 			Params.bLaunchReallyHidden,
 			&OutId,
 			Params.PriorityModifier,
-			nullptr,//*Params.OptionalWorkingDirectory,
+			*Params.OptionalWorkingDirectory,
 			WritePipe,
 			ReadPipe,
 			WritePipe);
