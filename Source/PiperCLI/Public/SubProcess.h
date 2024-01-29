@@ -65,7 +65,7 @@ struct FProcessState
 };
 
 
-class FSubProcessHandler
+class PIPERCLI_API FSubProcessHandler
 {
 public:
 
