@@ -59,6 +59,7 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 		}
 		else
 		{
+			FPlatformProcess::ClosePipe(State.WritePipe, State.ReadPipe);
 			AsyncTask(ENamedThreads::GameThread, [&, LocalId]
 			{
 				OnProcessBegin(LocalId, false);
@@ -66,8 +67,6 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 			});
 			return;
 		}
-
-		
 
 		FString LatestOutput = FPlatformProcess::ReadPipe(ReadPipe);
 		while (FPlatformProcess::IsProcRunning(State.ProcessHandle) || !LatestOutput.IsEmpty())
