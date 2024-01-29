@@ -80,9 +80,9 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 				{
 					if (Params.bOutputToGameThread)
 					{
+						//Lock-out reading until emits are consumed.
 						FThreadSafeBool bEmitComplete;
 
-						//for now gamethread queue the output, Allow non-gamethread returns in future
 						AsyncTask(ENamedThreads::GameThread, [&, LocalId]
 						{
 							OnProcessOutputBytes(LocalId, Buffer);
@@ -115,11 +115,10 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 					if (Params.bOutputToGameThread)
 					{
 						const FString SafeLatestOutput = LatestOutput;
-						//for now gamethread queue the output, Allow non-gamethread returns in future
 						AsyncTask(ENamedThreads::GameThread, [&, LocalId, SafeLatestOutput]
-							{
-								OnProcessOutput(LocalId, SafeLatestOutput);
-							});
+						{
+							OnProcessOutput(LocalId, SafeLatestOutput);
+						});
 					}
 					else
 					{
@@ -143,7 +142,6 @@ void FSubProcessHandler::StartProcess(const FProcessParams& InParams)
 			{
 				OnProcessEnd(LocalId, ExitCode);
 			});
-
 		}
 
 		ClosePipes();
