@@ -11,6 +11,7 @@ UPiperComponent::UPiperComponent(const FObjectInitializer& init) : UActorCompone
 	//Main options
 	CLIParams.OptionalWorkingDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + TEXT("Plugins/PiperCLI-Unreal/ThirdParty/Piper/Win64/"));
 	CLIParams.Url = CLIParams.OptionalWorkingDirectory  + TEXT("piper.exe");
+	CLIParams.bProcessInBytes = true;	//We process buffers directly for efficiency
 	
 	CLIParams.bLaunchHidden = true;
 	CLIParams.bLaunchReallyHidden = true;
