@@ -4,7 +4,7 @@ Experimental Piper plugin for Unreal via auto CLI wrapper.
 
 ## How to use
 
-1. Clone and download and extract `PiperWin64-2023.11.14-2.7z` [download link](https://github.com/getnamo/PiperCLI-Unreal/releases/download/v0.1.external/PiperWin64-2023.11.14-2.7z) into `ThirdParty/Piper/` in your `PiperCli-Unreal` plugin root folder.
+1. Clone and download and extract `PiperWin64-2023.11.14-2.7z` [link](https://github.com/getnamo/PiperCLI-Unreal/releases/download/v0.1.external/PiperWin64-2023.11.14-2.7z) into `ThirdParty/Piper/` in your `PiperCli-Unreal` plugin root folder.
 
 2. Download voice model from https://huggingface.co/rhasspy/piper-voices/tree/v1.0.0 e.g. for https://huggingface.co/rhasspy/piper-voices/tree/v1.0.0/en/en_US/joe/medium place `en_US-joe-medium.onnx` and `en_US-joe-medium.onnx.json` in your `PiperCLI-Unreal/ThirdParty/Piper/Win64/model/` folder.
 
