@@ -62,7 +62,7 @@ public:
 	bool bStartPiperOnBeginPlay = true;
 
 	//If input is sent and process isn't running, start it
-	UPROPERTY(BlueprintReadOnly, Category = "Piper Params")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
 	bool bLazyAutoStartProcess = true;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Piper Params")
