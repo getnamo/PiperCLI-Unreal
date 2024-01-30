@@ -61,6 +61,13 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
 	bool bStartPiperOnBeginPlay = true;
 
+	//If input is sent and process isn't running, start it
+	UPROPERTY(BlueprintReadOnly, Category = "Piper Params")
+	bool bLazyAutoStartProcess = true;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Piper Params")
+	bool bPiperProcessRunning = false;
+
 	//In either json or raw format
 	UFUNCTION(BlueprintCallable, Category = "Piper Functions")
 	void SendInput(const FString& Text);

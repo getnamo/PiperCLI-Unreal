@@ -49,6 +49,10 @@ void UPiperComponent::SyncCLIParams()
 
 void UPiperComponent::SendInput(const FString& Text)
 {
+	if (bLazyAutoStartProcess && !bPiperProcessRunning)
+	{
+		StartPiperProcess();
+	}
 	ProcessHandler->SendInput(Text);
 }
 
@@ -78,6 +82,7 @@ void UPiperComponent::InitializeComponent()
 
 	ProcessHandler->OnProcessBegin = [this](const int32 ProcessId, bool bStartSucceded)
 	{
+		bPiperProcessRunning = true;
 		OnBeginProcessing.Broadcast(FString::Printf(TEXT("Startup Success: %d"), bStartSucceded));
 	};
 
@@ -103,6 +108,7 @@ void UPiperComponent::InitializeComponent()
 
 	ProcessHandler->OnProcessEnd = [this](const int32 ProcessId, int32 ReturnCode)
 	{
+		bPiperProcessRunning = false;
 		OnEndProcessing.Broadcast(FString::Printf(TEXT("ReturnCode: %d"), ReturnCode));
 	};
 }
@@ -110,6 +116,7 @@ void UPiperComponent::InitializeComponent()
 void UPiperComponent::UninitializeComponent()
 {
 	ProcessHandler = nullptr;
+	bPiperProcessRunning = false;
 	Super::UninitializeComponent();
 }
 
