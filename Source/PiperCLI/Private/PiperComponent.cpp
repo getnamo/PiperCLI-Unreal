@@ -9,11 +9,11 @@ UPiperComponent::UPiperComponent(const FObjectInitializer& init) : UActorCompone
 	bAutoActivate = true;
 
 	//Main options
-	PiperCLIParams.OptionalWorkingDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + TEXT("Plugins/PiperCLI-Unreal/ThirdParty/Piper/Win64/"));
-	PiperCLIParams.Url = PiperCLIParams.OptionalWorkingDirectory  + TEXT("piper.exe");
+	CLIParams.OptionalWorkingDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + TEXT("Plugins/PiperCLI-Unreal/ThirdParty/Piper/Win64/"));
+	CLIParams.Url = CLIParams.OptionalWorkingDirectory  + TEXT("piper.exe");
 	
-	PiperCLIParams.bLaunchHidden = true;
-	PiperCLIParams.bLaunchReallyHidden = true;
+	CLIParams.bLaunchHidden = true;
+	CLIParams.bLaunchReallyHidden = true;
 
 	SyncCLIParams();
 }
@@ -31,16 +31,16 @@ void UPiperComponent::SyncCLIParams()
 	}
 
 	//Sync Basic model
-	PiperCLIParams.Params = FString::Printf(TEXT("--model ./model/%s"), *PiperParams.VoiceModelName);
+	CLIParams.Params = FString::Printf(TEXT("--model ./model/%s"), *PiperParams.VoiceModelName);
 
 	//append options
 	if (PiperParams.bOutputToUnreal)
 	{
-		PiperCLIParams.Params += TEXT(" --output-raw");
+		CLIParams.Params += TEXT(" --output-raw");
 	}
 	if (PiperParams.bUseJsonFormatInput)
 	{
-		PiperCLIParams.Params += TEXT(" --json-input");
+		CLIParams.Params += TEXT(" --json-input");
 	}
 }
 
@@ -58,7 +58,7 @@ void UPiperComponent::StartPiperProcess()
 
 	if (ProcessHandler)
 	{
-		ProcessHandler->StartProcess(PiperCLIParams);
+		ProcessHandler->StartProcess(CLIParams);
 	}
 }
 
