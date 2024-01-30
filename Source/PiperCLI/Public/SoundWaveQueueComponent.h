@@ -27,8 +27,14 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Properties")
 	USceneComponent* Target;
 
+	UPROPERTY(BlueprintReadOnly, Category = "SoundWaveQueue Properties")
+	bool bIsPlaying;
+
 	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Functions")
 	void QueueSound(USoundWave* Sound);
+
+	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Functions")
+	void PlayNextSoundInQueue();
 
 	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Functions")
 	void Stop();
@@ -44,6 +50,7 @@ public:
 	~USoundWaveQueueComponent();
 
 protected:
-
-	TQueue<USoundWave> SoundQueue;
+	FTimerHandle DelayTimerHandle;
+	UAudioComponent* AudioComponent;
+	TQueue<USoundWave*> SoundQueue;
 };
