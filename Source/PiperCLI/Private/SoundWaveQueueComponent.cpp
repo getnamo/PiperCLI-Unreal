@@ -14,6 +14,7 @@ USoundWaveQueueComponent::~USoundWaveQueueComponent()
 void USoundWaveQueueComponent::QueueSound(USoundWave* Sound)
 {
 	SoundQueue.Enqueue(Sound);
+	SoundRefStorage.Add(Sound);
 	PlayNextSoundInQueue();
 }
 
@@ -56,6 +57,15 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 				FVector(),
 				EAttachLocation::SnapToTarget,
 				true);
+
+			//now that it's referred elsewhere, remove it from queue storage
+			SoundRefStorage.Remove(Sound);
+
+			if (!AudioComponent)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("::PlayNextSoundInQueue AudioComponent startup failed."));
+				return;
+			}
 
 			AudioComponent->Play();
 

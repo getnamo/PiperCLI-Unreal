@@ -52,5 +52,9 @@ public:
 protected:
 	FTimerHandle DelayTimerHandle;
 	UAudioComponent* AudioComponent;
+
+	UPROPERTY()
+	TSet<USoundWave*> SoundRefStorage;
+
 	TQueue<USoundWave*> SoundQueue;
 };

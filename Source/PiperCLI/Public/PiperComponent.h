@@ -16,7 +16,7 @@ struct FPiperParams
 	GENERATED_USTRUCT_BODY()
 
 	//relative to 'ThirdParty/Piper/Win64/model'
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FProcessParams")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
 	FString VoiceModelName = TEXT("model.onnx");
 
 	//If true, expects text input in e.g. {"text":"hello!"}
