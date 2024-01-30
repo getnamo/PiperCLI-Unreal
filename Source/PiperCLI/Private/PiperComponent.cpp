@@ -8,10 +8,14 @@ UPiperComponent::UPiperComponent(const FObjectInitializer& init) : UActorCompone
 	bWantsInitializeComponent = true;
 	bAutoActivate = true;
 
+	//Main options
 	PiperCLIParams.OptionalWorkingDirectory = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() + TEXT("Plugins/PiperCLI-Unreal/ThirdParty/Piper/Win64/"));
 	PiperCLIParams.Url = PiperCLIParams.OptionalWorkingDirectory  + TEXT("piper.exe");
+	
 	PiperCLIParams.bLaunchHidden = true;
 	PiperCLIParams.bLaunchReallyHidden = true;
+
+	SyncCLIParams();
 }
 
 UPiperComponent::~UPiperComponent()
@@ -19,10 +23,51 @@ UPiperComponent::~UPiperComponent()
 
 }
 
+void UPiperComponent::SyncCLIParams()
+{
+	if (!PiperParams.bSyncCLIParams) 
+	{
+		return;
+	}
+
+	//Sync Basic model
+	PiperCLIParams.Params = FString::Printf(TEXT("--model ./model/%s"), *PiperParams.VoiceModelName);
+
+	//append options
+	if (PiperParams.bOutputToUnreal)
+	{
+		PiperCLIParams.Params += TEXT(" --output-raw");
+	}
+	if (PiperParams.bUseJsonFormatInput)
+	{
+		PiperCLIParams.Params += TEXT(" --json-input");
+	}
+}
+
+
 
 void UPiperComponent::SendInput(const FString& Text)
 {
 	ProcessHandler->SendInput(Text);
+}
+
+void UPiperComponent::StartPiperProcess()
+{
+	//Ensure these are synced before we start
+	SyncCLIParams();
+
+	if (ProcessHandler)
+	{
+		ProcessHandler->StartProcess(PiperCLIParams);
+	}
+}
+
+void UPiperComponent::StopPiperProcess()
+{
+	if (ProcessHandler)
+	{
+		ProcessHandler->StopProcess();
+	}
 }
 
 void UPiperComponent::InitializeComponent()
@@ -73,10 +118,7 @@ void UPiperComponent::BeginPlay()
 
 	if (bStartPiperOnBeginPlay)
 	{
-		if (ProcessHandler) 
-		{
-			ProcessHandler->StartProcess(PiperCLIParams);
-		}
+		StartPiperProcess();
 	}
 }
 
@@ -89,3 +131,4 @@ void UPiperComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 	Super::EndPlay(EndPlayReason);
 }
+
