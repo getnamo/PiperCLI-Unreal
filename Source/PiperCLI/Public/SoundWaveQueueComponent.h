@@ -27,6 +27,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Properties")
 	USceneComponent* Target;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Properties")
+	USoundAttenuation* AttenuationSettings;
+
 	UPROPERTY(BlueprintReadOnly, Category = "SoundWaveQueue Properties")
 	bool bIsPlaying;
 

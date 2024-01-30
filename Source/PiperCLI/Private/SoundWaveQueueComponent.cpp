@@ -58,6 +58,8 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 				EAttachLocation::SnapToTarget,
 				true);
 
+			AudioComponent->AttenuationSettings = AttenuationSettings;
+
 			//now that it's referred elsewhere, remove it from queue storage
 			SoundRefStorage.Remove(Sound);
 
