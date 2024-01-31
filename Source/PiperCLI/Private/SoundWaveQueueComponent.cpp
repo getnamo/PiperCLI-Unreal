@@ -27,6 +27,15 @@ void USoundWaveQueueComponent::Stop()
 	bIsPlaying = false;
 }
 
+void USoundWaveQueueComponent::ResumePlay()
+{
+	if (!bIsPlaying && AudioComponent)
+	{
+		AudioComponent->Play();
+		bIsPlaying = true;
+	}
+}
+
 void USoundWaveQueueComponent::PlayNextSoundInQueue()
 {
 	if (!bIsPlaying && bAutoPlayOnTarget)

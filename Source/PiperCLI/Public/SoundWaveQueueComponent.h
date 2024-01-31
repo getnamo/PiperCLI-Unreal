@@ -39,8 +39,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Functions")
 	void PlayNextSoundInQueue();
 
+	//Stop the current audio playback e.g. an interrupt
 	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Functions")
 	void Stop();
+
+	//If current audio stopped, this will resume the play again
+	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Functions")
+	void ResumePlay();
 
 	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Functions")
 	void ClearQueue();
