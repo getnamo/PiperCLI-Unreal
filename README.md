@@ -1,6 +1,6 @@
 # Piper CLI - Unreal
 
-[Piper](https://github.com/rhasspy/piper) plugin for Unreal via [auto CLI](https://github.com/getnamo/PiperCLI-Unreal/blob/main/Source/PiperCLI/Public/SubProcess.h) wrapper.
+[Piper](https://github.com/rhasspy/piper) plugin for Unreal via [simple CLI wrapper](https://github.com/getnamo/PiperCLI-Unreal/blob/main/Source/PiperCLI/Public/SubProcess.h).
 
 ## How to use
 
