@@ -152,6 +152,7 @@ void UPiperComponent::InitializeComponent()
 		FString ResultString;
 		FFileHelper::BufferToString(ResultString, OutputBytes.GetData(), OutputBytes.Num());
 
+		//This was a text message, not a piper pcm buffer
 		if (ResultString.Len() == OutputBytes.Num())
 		{
 			AsyncTask(ENamedThreads::GameThread, [&, ResultString]

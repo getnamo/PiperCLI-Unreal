@@ -25,7 +25,7 @@ struct FPiperParams
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
 	bool bSyncCLIParams = true;
 
-	//If true, the component will auto-convert pcm bytes to USoundWaveProcedural
+	//If true, the component will auto-convert pcm bytes to USoundWaveProcedural and not emit to OnOutputBytes
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
 	bool bOutputSoundWaves = true;
 
