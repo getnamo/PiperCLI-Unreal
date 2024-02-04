@@ -48,11 +48,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Piper Events")
 	FPiperOnGeneratedAudioSignature OnAudioGenerated;
 
-
 	//Specify voice model
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
 	FPiperParams PiperParams;
-
 
 	UFUNCTION(BlueprintCallable, Category = "Audio Utility")
 	TArray<uint8> PCMToWav(const TArray<uint8>& InPCMBytes, int32 SampleRate = 16000, int32 Channels = 1);
