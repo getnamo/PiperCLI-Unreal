@@ -14,6 +14,12 @@
   
 3. Add `Piper` component to your actor of choice. Edit `PiperParams` model `model/en_US-joe-medium.onnx`
 
+v0.3
+
 4. Subscribe to `OnOutputBytes(Piper)` and convert your sound data from PCM to WAV to Unreal SoundWave using e.g. [SocketIOClient Plugin's](https://github.com/getnamo/SocketIOClient-Unreal/tree/master) core utility functions https://github.com/getnamo/SocketIOClient-Unreal/blob/master/Source/CoreUtility/Public/CUBlueprintLibrary.h#L90.
+
+v0.4
+
+4. Subscribe to `OnAudioGenerated` and play your `USoundWave*`
 
 5. Play SoundWave. Optionally use `USoundWaveQueueComponent` to queue up all the soundwaves being generated faster than real-time and play them back at target world location in sequence.
