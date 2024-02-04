@@ -39,7 +39,7 @@ struct FPiperParams
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPiperOnGeneratedAudioSignature, USoundWave*, GeneratedSound);
 
-UCLASS(BlueprintType, ClassGroup = "TTS", meta = (BlueprintSpawnableComponent))
+UCLASS(BlueprintType, ClassGroup = "CLI", meta = (BlueprintSpawnableComponent))
 class PIPERCLI_API UPiperComponent : public UCLIProcessComponent
 {
 	GENERATED_UCLASS_BODY()

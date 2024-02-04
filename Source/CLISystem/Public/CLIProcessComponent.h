@@ -11,46 +11,46 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCLIOutputBinarySignature, const TAr
 
 
 
-UCLASS(BlueprintType, ClassGroup = "TTS", meta = (BlueprintSpawnableComponent))
+UCLASS(BlueprintType, ClassGroup = "CLI", meta = (BlueprintSpawnableComponent))
 class CLISYSTEM_API UCLIProcessComponent : public UActorComponent
 {
 	GENERATED_UCLASS_BODY()
 public:
 
-	UPROPERTY(BlueprintAssignable, Category = "Piper Events")
+	UPROPERTY(BlueprintAssignable, Category = "CLIProcess Events")
 	FCLIBeginProcessSignature OnBeginProcessing;
 
-	UPROPERTY(BlueprintAssignable, Category = "Piper Events")
+	UPROPERTY(BlueprintAssignable, Category = "CLIProcess Events")
 	FCLIEndProcessSignature OnEndProcessing;
 
-	UPROPERTY(BlueprintAssignable, Category = "Piper Events")
+	UPROPERTY(BlueprintAssignable, Category = "CLIProcess Events")
 	FCLIOutputStringSignature OnOutputText;
 
-	UPROPERTY(BlueprintAssignable, Category = "Piper Events")
+	UPROPERTY(BlueprintAssignable, Category = "CLIProcess Events")
 	FCLIOutputBinarySignature OnOutputBytes;
 
-	//Some of these may be overwritten by options in PiperParams
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
+	//Overwrite these in your subclass CLI components to specialize them
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "CLIProcess Params")
 	FProcessParams CLIParams;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "CLIProcess Params")
 	bool bStartProcessOnBeginPlay = true;
 
 	//If input is sent and process isn't running, start it
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "CLIProcess Params")
 	bool bLazyAutoStartProcess = true;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Piper Params")
+	UPROPERTY(BlueprintReadOnly, Category = "CLIProcess Params")
 	bool bProcessIsRunning = false;
 
 	//In either json or raw format
-	UFUNCTION(BlueprintCallable, Category = "Piper Functions")
+	UFUNCTION(BlueprintCallable, Category = "CLIProcess Functions")
 	virtual void SendInput(const FString& Text);
 
-	UFUNCTION(BlueprintCallable, Category = "Piper Functions")
+	UFUNCTION(BlueprintCallable, Category = "CLIProcess Functions")
 	virtual void StartProcess();
 
-	UFUNCTION(BlueprintCallable, Category = "Piper Functions")
+	UFUNCTION(BlueprintCallable, Category = "CLIProcess Functions")
 	virtual void StopProcess();
 
 	virtual void InitializeComponent() override;
