@@ -2,9 +2,9 @@
 
 using UnrealBuildTool;
 
-public class PiperCLI : ModuleRules
+public class CLISystem : ModuleRules
 {
-	public PiperCLI(ReadOnlyTargetRules Target) : base(Target)
+	public CLISystem(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 		
@@ -38,7 +38,6 @@ public class PiperCLI : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
-				"CLISystem"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

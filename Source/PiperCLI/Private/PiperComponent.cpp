@@ -1,9 +1,12 @@
 #include "PiperComponent.h"
+#include "Audio.h"
+#include "Async/Async.h"
+#include "Sound/SoundWaveProcedural.h"
 #include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
 
 
-UPiperComponent::UPiperComponent(const FObjectInitializer& init) : UActorComponent(init)
+UPiperComponent::UPiperComponent(const FObjectInitializer& init) : UCLIProcessComponent(init)
 {
 	bWantsInitializeComponent = true;
 	bAutoActivate = true;
@@ -15,6 +18,7 @@ UPiperComponent::UPiperComponent(const FObjectInitializer& init) : UActorCompone
 	
 	CLIParams.bLaunchHidden = true;
 	CLIParams.bLaunchReallyHidden = true;
+	CLIParams.bOutputToGameThread = false;
 
 	SyncCLIParams();
 }
@@ -23,6 +27,8 @@ UPiperComponent::~UPiperComponent()
 {
 
 }
+
+
 
 void UPiperComponent::SyncCLIParams()
 {
@@ -45,52 +51,102 @@ void UPiperComponent::SyncCLIParams()
 	}
 }
 
-
-
-void UPiperComponent::SendInput(const FString& Text)
+TArray<uint8> UPiperComponent::PCMToWav(const TArray<uint8>& InPCMBytes, int32 SampleRate, int32 Channels)
 {
-	if (bLazyAutoStartProcess && !bPiperProcessRunning)
-	{
-		StartPiperProcess();
-	}
-	ProcessHandler->SendInput(Text);
+	TArray<uint8> WavBytes;
+	SerializeWaveFile(WavBytes, InPCMBytes.GetData(), InPCMBytes.Num(), Channels, SampleRate);
+	return WavBytes;
 }
 
-void UPiperComponent::StartPiperProcess()
+void UPiperComponent::SetSoundWaveFromWavBytes(USoundWaveProcedural* InSoundWave, const TArray<uint8>& InBytes)
+{
+	FWaveModInfo WaveInfo;
+
+	FString ErrorReason;
+	if (WaveInfo.ReadWaveInfo(InBytes.GetData(), InBytes.Num(), &ErrorReason))
+	{
+		//copy header info
+		int32 DurationDiv = *WaveInfo.pChannels * *WaveInfo.pBitsPerSample * *WaveInfo.pSamplesPerSec;
+		if (DurationDiv)
+		{
+			InSoundWave->Duration = *WaveInfo.pWaveDataSize * 8.0f / DurationDiv;
+		}
+		else
+		{
+			InSoundWave->Duration = 0.0f;
+		}
+
+		InSoundWave->SetSampleRate(*WaveInfo.pSamplesPerSec);
+		InSoundWave->NumChannels = *WaveInfo.pChannels;
+		//SoundWaveProc->RawPCMDataSize = WaveInfo.SampleDataSize;
+		InSoundWave->bLooping = false;
+		InSoundWave->SoundGroup = ESoundGroup::SOUNDGROUP_Default;
+
+		//Queue actual audio data
+		InSoundWave->QueueAudio(WaveInfo.SampleDataStart, WaveInfo.SampleDataSize);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("SetSoundWaveFromWavBytes::WaveRead error: %s"), *ErrorReason);
+	}
+}
+
+USoundWave* UPiperComponent::WavToSoundWave(const TArray<uint8>& InWavBytes)
+{
+	USoundWave* SoundWave;
+
+	//Allocate based on thread
+	if (IsInGameThread())
+	{
+		SoundWave = NewObject<USoundWaveProcedural>(USoundWaveProcedural::StaticClass());
+		SetSoundWaveFromWavBytes((USoundWaveProcedural*)SoundWave, InWavBytes);
+	}
+	else
+	{
+		//We will go to another thread, copy our bytes
+		TArray<uint8> CopiedBytes = InWavBytes;
+		FThreadSafeBool bAllocationComplete = false;
+		AsyncTask(ENamedThreads::GameThread, [&bAllocationComplete, &SoundWave]
+		{
+			SoundWave = NewObject<USoundWaveProcedural>(USoundWaveProcedural::StaticClass());
+			bAllocationComplete = true;
+		});
+
+		//block while not complete
+		while (!bAllocationComplete)
+		{
+			//100micros sleep, this should be very quick
+			FPlatformProcess::Sleep(0.0001f);
+		};
+
+		SetSoundWaveFromWavBytes((USoundWaveProcedural*)SoundWave, CopiedBytes);
+	}
+
+	return SoundWave;
+}
+
+void UPiperComponent::StartProcess()
 {
 	//Ensure these are synced before we start
 	SyncCLIParams();
 
-	if (ProcessHandler)
-	{
-		ProcessHandler->StartProcess(CLIParams);
-	}
-}
-
-void UPiperComponent::StopPiperProcess()
-{
-	if (ProcessHandler)
-	{
-		ProcessHandler->StopProcess();
-	}
+	Super::StartProcess();
 }
 
 void UPiperComponent::InitializeComponent()
 {
 	Super::InitializeComponent();
-	ProcessHandler = MakeShareable(new FSubProcessHandler());
 
-	ProcessHandler->OnProcessBegin = [this](const int32 ProcessId, bool bStartSucceded)
+	ProcessHandler->OnProcessOutput = [this](const int32 ProcessId, const FString& OutputString)
 	{
-		bPiperProcessRunning = true;
-		OnBeginProcessing.Broadcast(FString::Printf(TEXT("Startup Success: %d"), bStartSucceded));
+		//Because we do not process bytes on game thread we need this wrapper here
+		AsyncTask(ENamedThreads::GameThread, [&]
+		{
+			OnOutputText.Broadcast(OutputString);
+		});
 	};
 
-	ProcessHandler->OnProcessOutput = [this](const int32 ProcessId, const FString & OutputString)
-	{
-		OnOutput.Broadcast(OutputString);
-	};
-
+	//We handle byte output processing differently for piper, auto-categorize output as text or string based on string length
 	ProcessHandler->OnProcessOutputBytes = [this](const int32 ProcessId, const TArray<uint8>& OutputBytes)
 	{
 		FString ResultString;
@@ -98,45 +154,49 @@ void UPiperComponent::InitializeComponent()
 
 		if (ResultString.Len() == OutputBytes.Num())
 		{
-			OnOutput.Broadcast(ResultString);
+			AsyncTask(ENamedThreads::GameThread, [&, ResultString]
+			{
+				OnOutputText.Broadcast(ResultString);
+			});
+		}
+		else if (PiperParams.bOutputSoundWaves)
+		{
+			//Convert to Wavbytes on bg thread
+			TArray<uint8> WavBytes = PCMToWav(OutputBytes, PiperParams.SampleRate, PiperParams.Channels);
+
+			//Convert and emit on game thread - todo: optimization of pre-gen soundwave on game thread, then just async convert
+			AsyncTask(ENamedThreads::GameThread, [&, WavBytes]
+			{
+				//Convert to usoundwave
+				USoundWave* Sound = WavToSoundWave(WavBytes);
+
+				OnAudioGenerated.Broadcast(Sound);
+			});
 		}
 		else
 		{
-			OnOutputBytes.Broadcast(OutputBytes);
+			//Copy bytes
+			TArray<uint8> SafeBytes = OutputBytes;
+			AsyncTask(ENamedThreads::GameThread, [&, SafeBytes]
+			{
+				OnOutputBytes.Broadcast(OutputBytes);
+			});
 		}
-	};
-
-	ProcessHandler->OnProcessEnd = [this](const int32 ProcessId, int32 ReturnCode)
-	{
-		bPiperProcessRunning = false;
-		OnEndProcessing.Broadcast(FString::Printf(TEXT("ReturnCode: %d"), ReturnCode));
 	};
 }
 
 void UPiperComponent::UninitializeComponent()
 {
-	ProcessHandler = nullptr;
-	bPiperProcessRunning = false;
 	Super::UninitializeComponent();
 }
 
 void UPiperComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (bStartPiperOnBeginPlay)
-	{
-		StartPiperProcess();
-	}
 }
 
 
 void UPiperComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	if (ProcessHandler)
-	{
-		ProcessHandler->StopProcess();
-	}
 	Super::EndPlay(EndPlayReason);
 }
-

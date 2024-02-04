@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "0.3.1",
+	"VersionName": "0.4.0",
 	"FriendlyName": "PiperCLI",
 	"Description": "",
 	"Category": "TTS",
@@ -16,9 +16,14 @@
 	"Installed": false,
 	"Modules": [
 		{
+			"Name": "CLISystem",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
 			"Name": "PiperCLI",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
-		}
+		},
 	]
 }

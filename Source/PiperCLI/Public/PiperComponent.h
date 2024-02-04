@@ -1,14 +1,8 @@
 #pragma once
 
-#include "SubProcess.h"
-#include "Components/ActorComponent.h"
+#include "CLIProcessComponent.h"
+#include "Sound/SoundWaveProcedural.h"
 #include "PiperComponent.generated.h"
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPiperBeginProcessSignature, const FString&, StartUpState);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPiperOutputSignature, const FString&, OutputMessage);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPiperOutputBinarySignature, const TArray<uint8>&, Buffer);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPiperEndProcessSignature, const FString&, EndState);
-
 
 USTRUCT(BlueprintType)
 struct FPiperParams
@@ -30,54 +24,46 @@ struct FPiperParams
 	//Set false if you want to specify CLI params fully yourself
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
 	bool bSyncCLIParams = true;
+
+	//If true, the component will auto-convert pcm bytes to USoundWaveProcedural
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
+	bool bOutputSoundWaves = true;
+
+	//Default for medium model
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
+	int32 SampleRate = 22050;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
+	int32 Channels = 1;
 };
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPiperOnGeneratedAudioSignature, USoundWave*, GeneratedSound);
+
 UCLASS(BlueprintType, ClassGroup = "TTS", meta = (BlueprintSpawnableComponent))
-class PIPERCLI_API UPiperComponent : public UActorComponent
+class PIPERCLI_API UPiperComponent : public UCLIProcessComponent
 {
 	GENERATED_UCLASS_BODY()
 public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Piper Events")
-	FPiperOutputSignature OnOutput;
+	FPiperOnGeneratedAudioSignature OnAudioGenerated;
 
-	UPROPERTY(BlueprintAssignable, Category = "Piper Events")
-	FPiperOutputBinarySignature OnOutputBytes;
-
-	UPROPERTY(BlueprintAssignable, Category = "Piper Events")
-	FPiperEndProcessSignature OnEndProcessing;
-
-	UPROPERTY(BlueprintAssignable, Category = "Piper Events")
-	FPiperBeginProcessSignature OnBeginProcessing;
 
 	//Specify voice model
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
 	FPiperParams PiperParams;
 
-	//Some of these may be overwritten by options in PiperParams
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
-	FProcessParams CLIParams;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
-	bool bStartPiperOnBeginPlay = true;
+	UFUNCTION(BlueprintCallable, Category = "Audio Utility")
+	TArray<uint8> PCMToWav(const TArray<uint8>& InPCMBytes, int32 SampleRate = 16000, int32 Channels = 1);
 
-	//If input is sent and process isn't running, start it
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
-	bool bLazyAutoStartProcess = true;
+	UFUNCTION(BlueprintCallable, Category = "Audio Utility")
+	USoundWave* WavToSoundWave(const TArray<uint8>& InWavBytes);
 
-	UPROPERTY(BlueprintReadOnly, Category = "Piper Params")
-	bool bPiperProcessRunning = false;
+	//UCLIProcessComponent overrides
+	virtual void StartProcess() override;
 
-	//In either json or raw format
-	UFUNCTION(BlueprintCallable, Category = "Piper Functions")
-	void SendInput(const FString& Text);
-
-	UFUNCTION(BlueprintCallable, Category = "Piper Functions")
-	void StartPiperProcess();
-
-	UFUNCTION(BlueprintCallable, Category = "Piper Functions")
-	void StopPiperProcess();
-
+	//UActorComponent overrides
 	virtual void InitializeComponent() override;
 	virtual void UninitializeComponent() override;
 	virtual void BeginPlay() override;
@@ -88,5 +74,6 @@ public:
 	~UPiperComponent();
 
 protected:
-	TSharedPtr<FSubProcessHandler> ProcessHandler;
+
+	void SetSoundWaveFromWavBytes(USoundWaveProcedural* InSoundWave, const TArray<uint8>& InBytes);
 };
