@@ -16,14 +16,15 @@
 	"Installed": false,
 	"Modules": [
 		{
-			"Name": "CLISystem",
-			"Type": "Runtime",
-			"LoadingPhase": "Default"
-		},
-		{
 			"Name": "PiperCLI",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
 		},
+	],
+	"Plugins":[
+		{
+			"Name": "CLISystem",
+			"Enabled": true
+		}
 	]
 }
