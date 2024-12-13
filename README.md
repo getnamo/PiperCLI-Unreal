@@ -1,6 +1,6 @@
 # Piper CLI - Unreal
 
-[Piper TTS](https://github.com/rhasspy/piper) plugin for Unreal via [simple CLI wrapper](https://github.com/getnamo/PiperCLI-Unreal/blob/main/Source/CLISystem/Public/SubProcess.h#L68).
+[Piper TTS](https://github.com/rhasspy/piper) plugin for Unreal via [simple CLI System wrapper plugin](https://github.com/getnamo/CLISystem-Unreal/).
 
 
 
