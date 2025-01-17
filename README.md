@@ -15,7 +15,7 @@
 
 4. Start your unreal project
   
-3. Add `Piper` component to your actor of choice. Edit `PiperParams` model `model/en_US-joe-medium.onnx`
+3. Add `Piper` component to your actor of choice. Edit `PiperParams` model to match your model e.g. `en_US-joe-medium.onnx`
 
 v0.3
 
