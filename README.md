@@ -23,6 +23,6 @@ v0.3
 
 v0.4
 
-4. Subscribe to `OnAudioGenerated` which output `USoundWave*` outputs instead of PCM bytes.
+4. Subscribe to `OnAudioGenerated` which outputs `USoundWave*` outputs instead of PCM bytes.
 
 5. Play SoundWave. Optionally use `USoundWaveQueueComponent` to queue up all the soundwaves being generated faster than real-time and play them back at target world location in sequence.
