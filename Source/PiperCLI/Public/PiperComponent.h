@@ -25,9 +25,13 @@ struct FPiperParams
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
 	bool bSyncCLIParams = true;
 
-	//If true, the component will auto-convert pcm bytes to USoundWaveProcedural and not emit to OnOutputBytes
+	//If true, the component will auto-convert pcm bytes to USoundWaveProcedural
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
 	bool bOutputSoundWaves = true;
+
+	//if true it will output to bytes. Turn off for efficiency boost
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
+	bool bOutputBytes = false;
 
 	//Default for medium model
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
@@ -35,6 +39,14 @@ struct FPiperParams
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
 	int32 Channels = 1;
+
+	//if different than sample rate it will be re-sampled internally before being emitted
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
+	int32 OutputSampleRate = 22050;
+
+	//If you wish to stream the output in chunks for e.g. downstream systems. If -1 it will not chunk. Only affects byte output.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
+	int32 OutputChunkSize = -1;
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPiperOnGeneratedAudioSignature, USoundWave*, GeneratedSound);
@@ -57,6 +69,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Audio Utility")
 	USoundWave* WavToSoundWave(const TArray<uint8>& InWavBytes);
+
+	UFUNCTION(BlueprintCallable, Category = "Audio Utility")
+	void ResamplePCM(const TArray<uint8>& SourcePCM, int32 SourceSampleRate, int32 TargetSampleRate, TArray<uint8>& OutResampledPCM);
+
+
+	void ChunkByteArray(const TArray<uint8>& InputArray, int32 ChunkSize, TArray<TArray<uint8>>& OutChunks);
 
 	//UCLIProcessComponent overrides
 	virtual void StartProcess() override;

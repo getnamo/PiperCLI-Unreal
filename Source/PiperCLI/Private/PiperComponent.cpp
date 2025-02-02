@@ -125,6 +125,68 @@ USoundWave* UPiperComponent::WavToSoundWave(const TArray<uint8>& InWavBytes)
 	return SoundWave;
 }
 
+void UPiperComponent::ResamplePCM(const TArray<uint8>& SourcePCM, int32 SourceSampleRate, int32 TargetSampleRate, TArray<uint8>& OutResampledPCM)
+{
+	if (SourcePCM.Num() % 2 != 0) // Ensure we have complete samples (16-bit PCM)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Invalid PCM data: Size must be even for 16-bit PCM"));
+		return;
+	}
+
+	const int32 SourceNumSamples = SourcePCM.Num() / 2; // Each sample is 2 bytes (16-bit)
+	const float ResampleRatio = static_cast<float>(TargetSampleRate) / static_cast<float>(SourceSampleRate);
+	const int32 TargetNumSamples = FMath::RoundToInt(SourceNumSamples * ResampleRatio);
+
+	OutResampledPCM.SetNum(TargetNumSamples * 2); // Allocate target PCM buffer
+
+	const int16* SourceSamples = reinterpret_cast<const int16*>(SourcePCM.GetData());
+	int16* TargetSamples = reinterpret_cast<int16*>(OutResampledPCM.GetData());
+
+	for (int32 i = 0; i < TargetNumSamples; i++)
+	{
+		// Compute corresponding source index
+		float SourceIndex = i / ResampleRatio;
+		int32 SourceIndexInt = FMath::FloorToInt(SourceIndex);
+		float Fraction = SourceIndex - SourceIndexInt;
+
+		if (SourceIndexInt + 1 < SourceNumSamples)
+		{
+			// Linear interpolation
+			int16 SampleA = SourceSamples[SourceIndexInt];
+			int16 SampleB = SourceSamples[SourceIndexInt + 1];
+			TargetSamples[i] = static_cast<int16>(FMath::Lerp(SampleA, SampleB, Fraction));
+		}
+		else
+		{
+			// Edge case: Just copy last sample
+			TargetSamples[i] = SourceSamples[SourceNumSamples - 1];
+		}
+	}
+}
+
+void UPiperComponent::ChunkByteArray(const TArray<uint8>& InputArray, int32 ChunkSize, TArray<TArray<uint8>>& OutChunks)
+{
+	if (ChunkSize <= 0)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Invalid Chunk Size"));
+		return;
+	}
+
+	OutChunks.Empty();
+	int32 NumChunks = FMath::CeilToInt(static_cast<float>(InputArray.Num()) / ChunkSize);
+
+	for (int32 i = 0; i < NumChunks; i++)
+	{
+		int32 StartIndex = i * ChunkSize;
+		int32 EndIndex = FMath::Min(StartIndex + ChunkSize, InputArray.Num());
+
+		TArray<uint8> Chunk;
+		Chunk.Append(InputArray.GetData() + StartIndex, EndIndex - StartIndex);
+		OutChunks.Add(Chunk);
+	}
+}
+
+
 void UPiperComponent::StartProcess()
 {
 	//Ensure these are synced before we start
@@ -160,29 +222,62 @@ void UPiperComponent::InitializeComponent()
 				OnOutputText.Broadcast(ResultString);
 			});
 		}
-		else if (PiperParams.bOutputSoundWaves)
-		{
-			//Convert to Wavbytes on bg thread
-			TArray<uint8> WavBytes = PCMToWav(OutputBytes, PiperParams.SampleRate, PiperParams.Channels);
-
-			//Convert and emit on game thread - todo: optimization of pre-gen soundwave on game thread, then just async convert
-			AsyncTask(ENamedThreads::GameThread, [&, WavBytes]
-			{
-				//Convert to usoundwave
-				USoundWave* Sound = WavToSoundWave(WavBytes);
-
-				OnAudioGenerated.Broadcast(Sound);
-			});
-		}
 		else
 		{
-			//Copy bytes
-			TArray<uint8> SafeBytes = OutputBytes;
-			AsyncTask(ENamedThreads::GameThread, [&, SafeBytes]
+			TArray<uint8> SafeBytes;
+
+			if (PiperParams.OutputSampleRate != PiperParams.SampleRate)
 			{
-				OnOutputBytes.Broadcast(OutputBytes);
-			});
+				ResamplePCM(OutputBytes, PiperParams.SampleRate, PiperParams.OutputSampleRate, SafeBytes);
+			}
+			else
+			{
+				//Copy bytes for bg tasks
+				SafeBytes = OutputBytes;
+			}
+
+			if (PiperParams.bOutputSoundWaves)
+			{
+				//Convert to Wavbytes on bg thread
+				TArray<uint8> WavBytes = PCMToWav(SafeBytes, PiperParams.OutputSampleRate, PiperParams.Channels);
+
+				//Convert and emit on game thread - todo: optimization of pre-gen soundwave on game thread, then just async convert
+				AsyncTask(ENamedThreads::GameThread, [&, WavBytes]
+				{
+					//Convert to usoundwave
+					USoundWave* Sound = WavToSoundWave(WavBytes);
+
+					OnAudioGenerated.Broadcast(Sound);
+				});
+
+			}
+			if (PiperParams.bOutputBytes)
+			{
+				if (PiperParams.OutputChunkSize == -1)
+				{
+					AsyncTask(ENamedThreads::GameThread, [&, SafeBytes]
+					{
+						OnOutputBytes.Broadcast(OutputBytes);
+					});
+				}
+				//if we have a positive chunk size, chunk our array and output each chunk as a callback
+				else if(PiperParams.OutputChunkSize > 0)
+				{
+					TArray<TArray<uint8>> Chunks;
+					ChunkByteArray(SafeBytes, PiperParams.OutputChunkSize, Chunks);
+
+					AsyncTask(ENamedThreads::GameThread, [&, Chunks]
+					{
+						for (auto& Chunk : Chunks)
+						{
+							OnOutputBytes.Broadcast(Chunk);
+						}
+					});
+					
+				}
+			}
 		}
+		
 	};
 }
 

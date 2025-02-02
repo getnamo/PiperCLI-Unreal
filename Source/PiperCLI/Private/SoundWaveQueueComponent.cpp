@@ -56,6 +56,9 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 		}
 		float Duration = Sound->Duration;
 
+		//Notify that next sound is playing
+		OnNextSoundBeginPlay.Broadcast(Sound);
+
 		//3d in-world playback
 		if (Target)
 		{
@@ -77,6 +80,8 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 				UE_LOG(LogTemp, Warning, TEXT("::PlayNextSoundInQueue AudioComponent startup failed."));
 				return;
 			}
+
+			OnNextAudioComponentBeginPlay.Broadcast(AudioComponent);
 
 			AudioComponent->Play();
 
