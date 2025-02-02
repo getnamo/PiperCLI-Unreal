@@ -86,6 +86,24 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 					FVector(),
 					EAttachLocation::SnapToTarget,
 					true);
+
+				AudioComponent->OnAudioFinishedNative.AddLambda([this](UAudioComponent* FinishedComponent)
+				{
+					AudioComponent->Stop();
+					bIsPlaying = false;
+					PlayNextSoundInQueue();
+				});
+
+				//Capture soundwave procedurals
+				AudioComponent->OnAudioPlaybackPercentNative.AddLambda([this](const UAudioComponent* ForAudioComponent, const USoundWave* ForSound, const float PercentDone)
+				{
+					if (PercentDone == 1.f)
+					{
+						AudioComponent->Stop();
+					}
+				});
+
+				OnAudioComponentCreated.Broadcast(AudioComponent);
 			}
 
 			AudioComponent->AttenuationSettings = AttenuationSettings;
@@ -98,14 +116,6 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 				UE_LOG(LogTemp, Warning, TEXT("::PlayNextSoundInQueue AudioComponent startup failed."));
 				return;
 			}
-
-			OnNextAudioComponentBeginPlay.Broadcast(AudioComponent);
-
-			AudioComponent->OnAudioFinishedNative.AddLambda([this](UAudioComponent * FinishedComponent)
-			{
-				bIsPlaying = false;
-				PlayNextSoundInQueue();
-			});
 
 			AudioComponent->Play();
 		}

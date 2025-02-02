@@ -5,7 +5,7 @@
 #include "SoundWaveQueueComponent.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSoundWaveSignature, USoundWave*, Sound);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FAudioComponentSignature, UAudioComponent*, Sound);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FAudioComponentSignature, UAudioComponent*, AudioComponent);
 
 UCLASS(BlueprintType, ClassGroup = "TTS", meta = (BlueprintSpawnableComponent))
 class PIPERCLI_API USoundWaveQueueComponent : public UActorComponent
@@ -18,7 +18,7 @@ public:
 	FSoundWaveSignature OnNextSoundBeginPlay;
 
 	UPROPERTY(BlueprintAssignable, Category = "SoundWaveQueue Events")
-	FAudioComponentSignature OnNextAudioComponentBeginPlay;
+	FAudioComponentSignature OnAudioComponentCreated;
 
 	//Ideally we'd use an on-finished callback
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Properties")
