@@ -38,6 +38,17 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "SoundWaveQueue Properties")
 	bool bIsPlaying;
 
+	UPROPERTY(BlueprintReadOnly, Category = "SoundWaveQueue Properties")
+	UAudioComponent* AudioComponent;
+
+	//In seconds of audio remaining
+	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Functions")
+	float GetQueueDepthSeconds();
+
+	//queue depth in number of remaining soundwaves
+	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Functions")
+	int32 GetQueueDepth();
+
 	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Functions")
 	void QueueSound(USoundWave* Sound);
 
@@ -55,6 +66,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Functions")
 	void ClearQueue();
 
+	//Call this after you change the target scene component
+	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Functions")
+	void DestroyTargetAudioComponent();
+
 	virtual void InitializeComponent() override;
 	virtual void UninitializeComponent() override;
 	virtual void BeginPlay() override;
@@ -63,8 +78,6 @@ public:
 	~USoundWaveQueueComponent();
 
 protected:
-	FTimerHandle DelayTimerHandle;
-	UAudioComponent* AudioComponent;
 
 	UPROPERTY()
 	TSet<USoundWave*> SoundRefStorage;

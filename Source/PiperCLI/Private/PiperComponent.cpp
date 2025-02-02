@@ -224,22 +224,13 @@ void UPiperComponent::InitializeComponent()
 		}
 		else
 		{
-			TArray<uint8> SafeBytes;
-
-			if (PiperParams.OutputSampleRate != PiperParams.SampleRate)
-			{
-				ResamplePCM(OutputBytes, PiperParams.SampleRate, PiperParams.OutputSampleRate, SafeBytes);
-			}
-			else
-			{
-				//Copy bytes for bg tasks
-				SafeBytes = OutputBytes;
-			}
+			//Copy bytes for bg tasks
+			TArray<uint8> SafeBytes = OutputBytes;
 
 			if (PiperParams.bOutputSoundWaves)
 			{
 				//Convert to Wavbytes on bg thread
-				TArray<uint8> WavBytes = PCMToWav(SafeBytes, PiperParams.OutputSampleRate, PiperParams.Channels);
+				TArray<uint8> WavBytes = PCMToWav(SafeBytes, PiperParams.SampleRate, PiperParams.Channels);
 
 				//Convert and emit on game thread - todo: optimization of pre-gen soundwave on game thread, then just async convert
 				AsyncTask(ENamedThreads::GameThread, [&, WavBytes]
@@ -251,8 +242,15 @@ void UPiperComponent::InitializeComponent()
 				});
 
 			}
+
 			if (PiperParams.bOutputBytes)
 			{
+				//re-sampling only affects binary/chunk output
+				if (PiperParams.ByteOutputSampleRate != PiperParams.SampleRate)
+				{
+					ResamplePCM(OutputBytes, PiperParams.SampleRate, PiperParams.ByteOutputSampleRate, SafeBytes);
+				}
+
 				if (PiperParams.OutputChunkSize == -1)
 				{
 					AsyncTask(ENamedThreads::GameThread, [&, SafeBytes]
@@ -268,12 +266,13 @@ void UPiperComponent::InitializeComponent()
 
 					AsyncTask(ENamedThreads::GameThread, [&, Chunks]
 					{
-						for (auto& Chunk : Chunks)
+						const int32 Total = Chunks.Num();
+						for (int32 i=0; i< Total; i++)
 						{
-							OnOutputBytes.Broadcast(Chunk);
+							auto& Chunk =  Chunks[i];
+							OnChunkGenerated.Broadcast(Chunk, i, Total);
 						}
 					});
-					
 				}
 			}
 		}

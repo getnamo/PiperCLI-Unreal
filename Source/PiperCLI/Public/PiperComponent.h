@@ -40,16 +40,17 @@ struct FPiperParams
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
 	int32 Channels = 1;
 
-	//if different than sample rate it will be re-sampled internally before being emitted
+	//if different than sample rate it will be re-sampled internally before being emitted (only for byte/chunk outputs not soundwaves).
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
-	int32 OutputSampleRate = 22050;
+	int32 ByteOutputSampleRate = 22050;
 
-	//If you wish to stream the output in chunks for e.g. downstream systems. If -1 it will not chunk. Only affects byte output.
+	//Set to positive integer if you wish to stream the output in chunks for e.g. downstream systems. If -1 it will not chunk. Only affects byte output.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
 	int32 OutputChunkSize = -1;
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPiperOnGeneratedAudioSignature, USoundWave*, GeneratedSound);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FPiperOutputChunkSignature, const TArray<uint8>&, Buffer, int32, ChunkIndex, int32, TotalChunks);
 
 UCLASS(BlueprintType, ClassGroup = "CLI", meta = (BlueprintSpawnableComponent))
 class PIPERCLI_API UPiperComponent : public UCLIProcessComponent
@@ -59,6 +60,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Piper Events")
 	FPiperOnGeneratedAudioSignature OnAudioGenerated;
+
+	UPROPERTY(BlueprintAssignable, Category = "Piper Events")
+	FPiperOutputChunkSignature OnChunkGenerated;
 
 	//Specify voice model
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")

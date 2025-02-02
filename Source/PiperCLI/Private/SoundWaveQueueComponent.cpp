@@ -11,6 +11,21 @@ USoundWaveQueueComponent::~USoundWaveQueueComponent()
 {
 }
 
+float USoundWaveQueueComponent::GetQueueDepthSeconds()
+{
+	float Duration = 0.f;
+	for (auto Sound : SoundRefStorage)
+	{
+		Duration += Sound->GetDuration();
+	}
+	return Duration;
+}
+
+int32 USoundWaveQueueComponent::GetQueueDepth()
+{
+	return SoundRefStorage.Num();
+}
+
 void USoundWaveQueueComponent::QueueSound(USoundWave* Sound)
 {
 	SoundQueue.Enqueue(Sound);
@@ -62,13 +77,16 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 		//3d in-world playback
 		if (Target)
 		{
-			AudioComponent = UGameplayStatics::SpawnSoundAttached(
-				Sound,
-				Target,
-				FName(),
-				FVector(),
-				EAttachLocation::SnapToTarget,
-				true);
+			if(!AudioComponent)
+			{
+				AudioComponent = UGameplayStatics::SpawnSoundAttached(
+					Sound,
+					Target,
+					FName(),
+					FVector(),
+					EAttachLocation::SnapToTarget,
+					true);
+			}
 
 			AudioComponent->AttenuationSettings = AttenuationSettings;
 
@@ -83,24 +101,13 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 
 			OnNextAudioComponentBeginPlay.Broadcast(AudioComponent);
 
-			AudioComponent->Play();
-
-			// Set the timer with a lambda function
-			GetWorld()->GetTimerManager().SetTimer(DelayTimerHandle, [this]()
+			AudioComponent->OnAudioFinishedNative.AddLambda([this](UAudioComponent * FinishedComponent)
 			{
-				if (!bIsPlaying)
-				{
-					return;
-				}
-
-				if (AudioComponent)
-				{
-					AudioComponent->DestroyComponent();
-					AudioComponent = nullptr;
-				}
 				bIsPlaying = false;
 				PlayNextSoundInQueue();
-			}, Duration, false);
+			});
+
+			AudioComponent->Play();
 		}
 		else
 		{
@@ -113,6 +120,15 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 void USoundWaveQueueComponent::ClearQueue()
 {
 	SoundQueue.Empty();
+}
+
+void USoundWaveQueueComponent::DestroyTargetAudioComponent()
+{
+	if (AudioComponent)
+	{
+		AudioComponent->DestroyComponent();
+		AudioComponent = nullptr;
+	}
 }
 
 void USoundWaveQueueComponent::InitializeComponent()
@@ -133,5 +149,7 @@ void USoundWaveQueueComponent::BeginPlay()
 void USoundWaveQueueComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Stop();
+
+	DestroyTargetAudioComponent();
 	Super::EndPlay(EndPlayReason);
 }
