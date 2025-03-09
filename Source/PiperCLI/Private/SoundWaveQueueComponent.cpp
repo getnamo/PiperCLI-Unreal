@@ -53,27 +53,25 @@ void USoundWaveQueueComponent::ResumePlay()
 
 void USoundWaveQueueComponent::PlayNextSoundInQueue()
 {
-	if (!bIsPlaying && bAutoPlayOnTarget)
+	if (bIsPlaying)
 	{
-		USoundWave* Sound;
-		bool bQueueIsNotEmpty = SoundQueue.Dequeue(Sound);
+		return;
+	}
 
-		//Nothing left in queue - exit
-		if (!bQueueIsNotEmpty)
-		{
-			bIsPlaying = false;
-			if (AudioComponent)
-			{
-				AudioComponent->DestroyComponent();
-				AudioComponent = nullptr;
-			}
-			return;
-		}
-		float Duration = Sound->Duration;
+	USoundWave* Sound;
+	bool bQueueIsNotEmpty = SoundQueue.Dequeue(Sound);
 
-		//Notify that next sound is playing
-		OnNextSoundBeginPlay.Broadcast(Sound);
+	//Nothing left in queue - exit
+	if (!bQueueIsNotEmpty)
+	{
+		bIsPlaying = false;
+		return;
+	}
 
+	float Duration = Sound->Duration;
+
+	if (bAutoPlayOnTarget)
+	{
 		//3d in-world playback
 		if (Target)
 		{
@@ -89,7 +87,6 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 
 				AudioComponent->OnAudioFinishedNative.AddLambda([this](UAudioComponent* FinishedComponent)
 				{
-					AudioComponent->Stop();
 					bIsPlaying = false;
 					PlayNextSoundInQueue();
 				});
@@ -100,10 +97,15 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 					if (PercentDone == 1.f)
 					{
 						AudioComponent->Stop();
+						bIsPlaying = false;
 					}
 				});
 
 				OnAudioComponentCreated.Broadcast(AudioComponent);
+			}
+			else
+			{
+				AudioComponent->SetSound(Sound);
 			}
 
 			AudioComponent->AttenuationSettings = AttenuationSettings;
@@ -118,11 +120,19 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 			}
 
 			AudioComponent->Play();
+
+			bIsPlaying = true;
+
+			//Notify that next sound is playing
+			OnNextSoundBeginPlay.Broadcast(Sound);
 		}
 		else
 		{
 			UE_LOG(LogTemp, Warning, TEXT("::PlayNextSoundInQueue with no Target, not yet implemented."));
 		}
+	}
+	else
+	{
 		bIsPlaying = true;
 	}
 }
