@@ -83,4 +83,6 @@ protected:
 	TSet<USoundWave*> SoundRefStorage;
 
 	TQueue<USoundWave*> SoundQueue;
+
+	FTimerHandle DelayTimerHandle;
 };

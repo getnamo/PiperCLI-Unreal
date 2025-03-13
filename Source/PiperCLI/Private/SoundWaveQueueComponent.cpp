@@ -85,21 +85,23 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 					EAttachLocation::SnapToTarget,
 					true);
 
-				AudioComponent->OnAudioFinishedNative.AddLambda([this](UAudioComponent* FinishedComponent)
+				if(!bUsePlayTimeBasedQueueHandling)
 				{
-					bIsPlaying = false;
-					PlayNextSoundInQueue();
-				});
-
-				//Capture soundwave procedurals
-				AudioComponent->OnAudioPlaybackPercentNative.AddLambda([this](const UAudioComponent* ForAudioComponent, const USoundWave* ForSound, const float PercentDone)
-				{
-					if (PercentDone == 1.f)
+					AudioComponent->OnAudioFinishedNative.AddLambda([this](UAudioComponent* FinishedComponent)
 					{
-						AudioComponent->Stop();
 						bIsPlaying = false;
-					}
-				});
+						PlayNextSoundInQueue();
+					});
+					//Capture soundwave procedurals
+					AudioComponent->OnAudioPlaybackPercentNative.AddLambda([this](const UAudioComponent* ForAudioComponent, const USoundWave* ForSound, const float PercentDone)
+					{
+						if (PercentDone == 1.f)
+						{
+							AudioComponent->Stop();
+							bIsPlaying = false;
+						}
+					});
+				}
 
 				OnAudioComponentCreated.Broadcast(AudioComponent);
 			}
@@ -125,15 +127,22 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 
 			//Notify that next sound is playing
 			OnNextSoundBeginPlay.Broadcast(Sound);
+
+			//Fallback option that works: wait based
+			if (bUsePlayTimeBasedQueueHandling)
+			{
+				// Set the timer with a lambda function
+				GetWorld()->GetTimerManager().SetTimer(DelayTimerHandle, [this]()
+				{
+					bIsPlaying = false;
+					PlayNextSoundInQueue();
+				}, Duration, false);
+			}
 		}
 		else
 		{
 			UE_LOG(LogTemp, Warning, TEXT("::PlayNextSoundInQueue with no Target, not yet implemented."));
 		}
-	}
-	else
-	{
-		bIsPlaying = true;
 	}
 }
 
