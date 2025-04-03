@@ -33,6 +33,14 @@ struct FPiperParams
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
 	bool bOutputBytes = false;
 
+	//If you want to grab the audio for later use
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
+	bool bSaveAudioToDisk = false;
+
+	//relative to saved folder if starting with .
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
+	FString AudioSavePath = TEXT("./Audio");
+
 	//Default for medium model
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
 	int32 SampleRate = 22050;
@@ -49,7 +57,7 @@ struct FPiperParams
 	int32 OutputChunkSize = -1;
 };
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPiperOnGeneratedAudioSignature, USoundWave*, GeneratedSound);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FPiperOnGeneratedAudioSignature, USoundWave*, GeneratedSound, const FString&, Transcript);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FPiperOutputChunkSignature, const TArray<uint8>&, Buffer, int32, ChunkIndex, int32, TotalChunks);
 
 UCLASS(BlueprintType, ClassGroup = "CLI", meta = (BlueprintSpawnableComponent))
@@ -83,6 +91,8 @@ public:
 	//UCLIProcessComponent overrides
 	virtual void StartProcess() override;
 
+	virtual void SendInput(const FString& Text) override;
+
 	//UActorComponent overrides
 	virtual void InitializeComponent() override;
 	virtual void UninitializeComponent() override;
@@ -95,5 +105,8 @@ public:
 
 protected:
 
+	TQueue<FString> TextQueue;
+
 	void SetSoundWaveFromWavBytes(USoundWaveProcedural* InSoundWave, const TArray<uint8>& InBytes);
+	FString MakeSafeFilename(const FString& InputText);
 };

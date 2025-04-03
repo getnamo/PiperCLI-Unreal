@@ -4,6 +4,7 @@
 #include "Sound/SoundWaveProcedural.h"
 #include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
+#include "HAL/PlatformFilemanager.h"
 
 
 UPiperComponent::UPiperComponent(const FObjectInitializer& init) : UCLIProcessComponent(init)
@@ -89,6 +90,34 @@ void UPiperComponent::SetSoundWaveFromWavBytes(USoundWaveProcedural* InSoundWave
 	{
 		UE_LOG(LogTemp, Log, TEXT("SetSoundWaveFromWavBytes::WaveRead error: %s"), *ErrorReason);
 	}
+}
+
+FString UPiperComponent::MakeSafeFilename(const FString& InputText)
+{
+	FString SafeName = InputText;
+
+	// Replace spaces with dashes
+	SafeName.ReplaceInline(TEXT(" "), TEXT("-"));
+
+	// Define a regex to remove illegal characters
+	// Invalid filename characters on Windows: \ / : * ? " < > |
+	const FRegexPattern InvalidCharPattern(TEXT("[\\\\/:*?\"<>|]"));
+	FRegexMatcher Matcher(InvalidCharPattern, SafeName);
+
+	// Remove each match
+	while (Matcher.FindNext())
+	{
+		int32 Start = Matcher.GetMatchBeginning();
+		int32 End = Matcher.GetMatchEnding();
+		SafeName.RemoveAt(Start, End - Start, EAllowShrinking::No);
+		Matcher = FRegexMatcher(InvalidCharPattern, SafeName); // reinitialize due to string mutation
+	}
+
+	// Optionally trim leading/trailing whitespace or dashes
+	SafeName = SafeName.TrimStartAndEnd();
+	SafeName = SafeName.Replace(TEXT("--"), TEXT("-")); // collapse double dashes
+
+	return SafeName;
 }
 
 USoundWave* UPiperComponent::WavToSoundWave(const TArray<uint8>& InWavBytes)
@@ -195,6 +224,12 @@ void UPiperComponent::StartProcess()
 	Super::StartProcess();
 }
 
+void UPiperComponent::SendInput(const FString& Text)
+{
+	TextQueue.Enqueue(Text);
+	Super::SendInput(Text);
+}
+
 void UPiperComponent::InitializeComponent()
 {
 	Super::InitializeComponent();
@@ -232,14 +267,24 @@ void UPiperComponent::InitializeComponent()
 				//Convert to Wavbytes on bg thread
 				TArray<uint8> WavBytes = PCMToWav(SafeBytes, PiperParams.SampleRate, PiperParams.Channels);
 
+				FString Transcript;
+				TextQueue.Dequeue(Transcript);
+
 				//Convert and emit on game thread - todo: optimization of pre-gen soundwave on game thread, then just async convert
-				AsyncTask(ENamedThreads::GameThread, [&, WavBytes]
+				AsyncTask(ENamedThreads::GameThread, [&, WavBytes, Transcript]
 				{
 					//Convert to usoundwave
 					USoundWave* Sound = WavToSoundWave(WavBytes);
-
-					OnAudioGenerated.Broadcast(Sound);
+					OnAudioGenerated.Broadcast(Sound, Transcript);
 				});
+
+				//after emitting but on piper thread, save if needed to disk
+				if (PiperParams.bSaveAudioToDisk)
+				{
+					FString SafeFileName = MakeSafeFilename(Transcript);
+					FString OutputPath = FPaths::ProjectSavedDir() / PiperParams.AudioSavePath / SafeFileName + TEXT(".wav");
+					FFileHelper::SaveArrayToFile(WavBytes, *OutputPath);
+				}
 
 			}
 
