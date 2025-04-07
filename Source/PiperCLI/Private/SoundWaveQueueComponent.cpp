@@ -44,6 +44,8 @@ void USoundWaveQueueComponent::Stop()
 	if (PlaybackStateInfo.bIsPlaying && AudioComponent)
 	{
 		AudioComponent->Stop();
+
+		DelayTimerHandle.Invalidate();
 	}
 	PlaybackStateInfo.bIsPlaying = false;
 
@@ -84,7 +86,6 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 	LastEstimatedSpokenWord = TEXT("");
 	PlaybackStateInfo.FullDuration = Sound->Duration;
 	PlaybackStateInfo.SectionText = SoundData.Transcription;
-	
 
 	if (bAutoPlayOnTarget)
 	{
@@ -162,10 +163,24 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 			//Fallback option that works: wait based
 			if (bUsePlayTimeBasedQueueHandling)
 			{
+				const FString SectionText = SoundData.Transcription;
 				// Set the timer with a lambda function
-				GetWorld()->GetTimerManager().SetTimer(DelayTimerHandle, [this]()
+				GetWorld()->GetTimerManager().SetTimer(DelayTimerHandle, [this, SectionText]()
 				{
+					//Early stop handling
+					if (!PlaybackStateInfo.bIsPlaying)
+					{
+						return;
+					}
+
 					PlaybackStateInfo.bIsPlaying = false;
+
+					//We fully played the last text, add it
+					if (bIsTrackingText)
+					{
+						TrackedText += SectionText;
+					}
+
 					PlayNextSoundInQueue();
 				}, PlaybackStateInfo.FullDuration, false);
 			}
@@ -282,6 +297,20 @@ FString USoundWaveQueueComponent::GetTextUpToFactorInclusive(float Factor, const
 
 	// If the factor was near 1, include the whole string
 	return Text;
+}
+
+void USoundWaveQueueComponent::StartTrackingText()
+{
+	TrackedText = TEXT("");
+	bIsTrackingText = true;
+}
+
+FString USoundWaveQueueComponent::StopTrackingText()
+{
+	//add any missing bits
+	TrackedText += GetTextUpToFactorInclusive(PlaybackStateInfo.PlaybackFactor, PlaybackStateInfo.SectionText);
+	bIsTrackingText = false;
+	return TrackedText;
 }
 
 void USoundWaveQueueComponent::InitializeComponent()

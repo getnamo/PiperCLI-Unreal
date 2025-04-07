@@ -133,6 +133,13 @@ public:
 	//useful to get the text that was spoken up until cutoff portion
 	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Utility")
 	FString GetTextUpToFactorInclusive(float Factor, const FString& Text);
+	
+	//utility function for getting text between these two calls
+	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Utility")
+	void StartTrackingText();
+
+	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Utility")
+	FString StopTrackingText();
 
 	virtual void InitializeComponent() override;
 	virtual void UninitializeComponent() override;
@@ -152,6 +159,11 @@ protected:
 	TQueue<FSWTranscribedSound> SoundQueue;
 
 	FString LastEstimatedSpokenWord;
+
+	UPROPERTY()
+	FString TrackedText;
+
+	bool bIsTrackingText = false;
 
 	FTimerHandle DelayTimerHandle;
 };
