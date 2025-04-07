@@ -65,9 +65,11 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "SoundWaveQueue Events")
 	FAudioComponentSignature OnAudioComponentCreated;
 
+	//called every frame when playing for downstream handling
 	UPROPERTY(BlueprintAssignable, Category = "SoundWaveQueue Events")
 	FPlaybackStateSignature OnAudioPlayback;
 
+	//If you pass in transcript info, you can callbacks when the word should be spoken
 	UPROPERTY(BlueprintAssignable, Category = "SoundWaveQueue Events")
 	FPlaybackStateSignature OnEstimatedWordSpoken;
 
@@ -85,9 +87,6 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Properties")
 	USoundAttenuation* AttenuationSettings;
-
-	UPROPERTY(BlueprintReadOnly, Category = "SoundWaveQueue Properties")
-	bool bIsPlaying;
 
 	UPROPERTY(BlueprintReadOnly, Category = "SoundWaveQueue Properties")
 	UAudioComponent* AudioComponent;
@@ -108,6 +107,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Functions")
 	void PlayNextSoundInQueue();
+
+	UFUNCTION(BlueprintPure, Category = "SoundWaveQueue Functions")
+	bool IsPlaying();
 
 	//Stop the current audio playback e.g. an interrupt
 	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Functions")

@@ -177,6 +177,11 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 	}
 }
 
+bool USoundWaveQueueComponent::IsPlaying()
+{
+	return PlaybackStateInfo.bIsPlaying;
+}
+
 void USoundWaveQueueComponent::ClearQueue()
 {
 	SoundQueue.Empty();
@@ -312,6 +317,7 @@ void USoundWaveQueueComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 		float Now = GetWorld()->GetTimeSeconds();
 		PlaybackStateInfo.PlaybackElapsedSeconds = Now - PlaybackStateInfo.PlayStartTime;
 
+		//Don't bother emitting if we don't pass in transcripts
 		if (!PlaybackStateInfo.SectionText.IsEmpty())
 		{
 			//this should be close to PercentDone
