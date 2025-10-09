@@ -2,6 +2,7 @@
 
 #include "Components/ActorComponent.h"
 #include "Sound/SoundWave.h"
+#include "FIFOQueue.h"
 #include "SoundWaveQueueComponent.generated.h"
 
 USTRUCT(BlueprintType)
@@ -9,16 +10,20 @@ struct FSWQSettings
 {
 	GENERATED_USTRUCT_BODY()
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Settings")
+	USoundAttenuation* AttenuationSettings;
+
 	//Ideally we'd use an on-finished callback
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Properties")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Settings")
 	bool bUsePlayTimeBasedQueueHandling = true;
 
 	//If false, handle your own playback logic
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Properties")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Settings")
 	bool bAutoPlayOnTarget = true;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Properties")
-	USoundAttenuation* AttenuationSettings;
+	//has performance implications
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Settings")
+	bool bStreamEmitBytesIfAvailable = false;
 };
 
 //Wrapped data structure to allow easier downstream parsing
@@ -52,6 +57,7 @@ struct FSWSoundData
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSoundWaveSignature, USoundWave*, Sound);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSoundDataSignature, const FSWSoundData&, SoundData);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSoundChunkSignature, const TArray<uint8>&, SoundChunk);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FAudioComponentSignature, UAudioComponent*, AudioComponent);
 
 USTRUCT(BlueprintType)
@@ -60,28 +66,31 @@ struct FSWPlayStateInformation
 	GENERATED_USTRUCT_BODY()
 
 	/* Lerp based on time, won't be 100% aligned. Can be used for rough sub-titling */
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SWStopInformation Properties")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FSWPlayStateInformation Properties")
 	FString EstimatedWord;
 
 	/** Sentence or full text sent with Sound*/
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SWStopInformation Properties")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FSWPlayStateInformation Properties")
 	FString SectionText;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SWStopInformation Properties")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FSWPlayStateInformation Properties")
 	float PlaybackFactor = 0.f;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SWStopInformation Properties")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FSWPlayStateInformation Properties")
 	float PlaybackElapsedSeconds = 0.f;
 
 	//full duration of sound being played
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SWStopInformation Properties")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FSWPlayStateInformation Properties")
 	float FullDuration = 0.f;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SWStopInformation Properties")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FSWPlayStateInformation Properties")
 	float PlayStartTime = 0.f;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SWStopInformation Properties")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FSWPlayStateInformation Properties")
 	bool bIsPlaying = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FSWPlayStateInformation Properties")
+	int32 SampleRate = 16000;
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPlaybackStateSignature, const FSWPlayStateInformation&, PlaybackState);
@@ -106,6 +115,10 @@ public:
 	//If you pass in transcript info, you can callbacks when the word should be spoken
 	UPROPERTY(BlueprintAssignable, Category = "SoundWaveQueue Events")
 	FPlaybackStateSignature OnEstimatedWordSpoken;
+
+	//roughly synced sound chunk
+	UPROPERTY(BlueprintAssignable, Category = "SoundWaveQueue Events")
+	FSoundChunkSignature OnSyncedSoundChunk;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Properties")
 	FSWQSettings Settings;
@@ -186,6 +199,8 @@ protected:
 	TSet<USoundWave*> SoundRefStorage;
 
 	TQueue<FSWSoundData> SoundQueue;
+
+	FByteFIFOQueue SoundChunkQueue;
 
 	FString LastEstimatedSpokenWord;
 

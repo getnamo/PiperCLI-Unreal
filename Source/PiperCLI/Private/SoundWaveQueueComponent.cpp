@@ -161,9 +161,18 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 			AudioComponent->Play();
 			PlaybackStateInfo.PlayStartTime = GetWorld()->GetTimeSeconds();
 			PlaybackStateInfo.bIsPlaying = true;
+			PlaybackStateInfo.SampleRate = SoundData.ByteOutputSampleRate;
 
 			//Notify that next sound is playing
 			OnNextSoundBeginPlay.Broadcast(SoundData);
+
+			//Clean up the queue
+
+			if (SoundData.PCMBytes.Num() > 0)
+			{
+				SoundChunkQueue.Clear();
+				SoundChunkQueue.Feed(SoundData.PCMBytes);
+			}
 
 			//Fallback option that works: wait based
 			if (Settings.bUsePlayTimeBasedQueueHandling)
@@ -368,5 +377,16 @@ void USoundWaveQueueComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 		}
 
 		OnAudioPlayback.Broadcast(PlaybackStateInfo);
+	}
+
+	//emit bytes synced with delta time (roughly)
+	if (Settings.bStreamEmitBytesIfAvailable && !SoundChunkQueue.IsEmpty())
+	{
+		float SampleRate = PlaybackStateInfo.SampleRate;
+		int32 NSamples = FMath::RoundToInt32(DeltaTime * SampleRate * 2.f);
+
+		TArray<uint8> Chunk = SoundChunkQueue.Take(NSamples);
+
+		OnSyncedSoundChunk.Broadcast(Chunk);
 	}
 }
