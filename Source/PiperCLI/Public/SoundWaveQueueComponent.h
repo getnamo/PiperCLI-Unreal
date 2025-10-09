@@ -4,21 +4,38 @@
 #include "Sound/SoundWave.h"
 #include "SoundWaveQueueComponent.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSoundWaveSignature, USoundWave*, Sound);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FAudioComponentSignature, UAudioComponent*, AudioComponent);
-
-
+//Wrapped data structure to allow easier downstream parsing
 USTRUCT(BlueprintType)
-struct FSWTranscribedSound
+struct FSWSoundData
 {
 	GENERATED_USTRUCT_BODY()
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SWTranscribedSound Properties")
-	USoundWave* Sound;
+	//Wrapped Soundwave for playback
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Sound Data")
+	USoundWave* SoundWave;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FSWTranscribedSound Properties")
-	FString Transcription;
+	//Optional extra data used for matching emits
+
+	//Matching transcript
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Sound Data")
+	FString Transcript;
+
+	//Duration of generated clip
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Sound Data")
+	float Duration = 0.f;
+
+	//Duplicated - raw bytes in the desired format, will be empty if piper bOutputBytes is false
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Sound Data")
+	TArray<uint8> PCMBytes;
+
+	//if sample rate is -1, we haven't set out byte output
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Piper Params")
+	int32 ByteOutputSampleRate = -1;
 };
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSoundWaveSignature, USoundWave*, Sound);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSoundDataSignature, const FSWSoundData&, SoundData);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FAudioComponentSignature, UAudioComponent*, AudioComponent);
 
 USTRUCT(BlueprintType)
 struct FSWPlayStateInformation
@@ -60,7 +77,7 @@ public:
 
 	//Called when the next audio is being played, can be used to interrupt or do additional processing if needed
 	UPROPERTY(BlueprintAssignable, Category = "SoundWaveQueue Events")
-	FSoundWaveSignature OnNextSoundBeginPlay;
+	FSoundDataSignature OnNextSoundBeginPlay;
 
 	UPROPERTY(BlueprintAssignable, Category = "SoundWaveQueue Events")
 	FAudioComponentSignature OnAudioComponentCreated;
@@ -104,6 +121,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Functions")
 	void QueueSound(USoundWave* Sound, const FString& Transcript = TEXT(""));
+
+	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Functions")
+	void QueueSoundData(const FSWSoundData& SoundData);
 
 	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Functions")
 	void PlayNextSoundInQueue();
@@ -156,7 +176,7 @@ protected:
 	UPROPERTY()
 	TSet<USoundWave*> SoundRefStorage;
 
-	TQueue<FSWTranscribedSound> SoundQueue;
+	TQueue<FSWSoundData> SoundQueue;
 
 	FString LastEstimatedSpokenWord;
 

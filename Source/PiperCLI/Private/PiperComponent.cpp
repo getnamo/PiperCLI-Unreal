@@ -262,32 +262,6 @@ void UPiperComponent::InitializeComponent()
 			//Copy bytes for bg tasks
 			TArray<uint8> SafeBytes = OutputBytes;
 
-			if (PiperParams.bOutputSoundWaves)
-			{
-				//Convert to Wavbytes on bg thread
-				TArray<uint8> WavBytes = PCMToWav(SafeBytes, PiperParams.SampleRate, PiperParams.Channels);
-
-				FString Transcript;
-				TextQueue.Dequeue(Transcript);
-
-				//Convert and emit on game thread - todo: optimization of pre-gen soundwave on game thread, then just async convert
-				AsyncTask(ENamedThreads::GameThread, [&, WavBytes, Transcript]
-				{
-					//Convert to usoundwave
-					USoundWave* Sound = WavToSoundWave(WavBytes);
-					OnAudioGenerated.Broadcast(Sound, Transcript);
-				});
-
-				//after emitting but on piper thread, save if needed to disk
-				if (PiperParams.bSaveAudioToDisk)
-				{
-					FString SafeFileName = MakeSafeFilename(Transcript);
-					FString OutputPath = FPaths::ProjectSavedDir() / PiperParams.AudioSavePath / SafeFileName + TEXT(".wav");
-					FFileHelper::SaveArrayToFile(WavBytes, *OutputPath);
-				}
-
-			}
-
 			if (PiperParams.bOutputBytes)
 			{
 				//re-sampling only affects binary/chunk output
@@ -304,7 +278,7 @@ void UPiperComponent::InitializeComponent()
 					});
 				}
 				//if we have a positive chunk size, chunk our array and output each chunk as a callback
-				else if(PiperParams.OutputChunkSize > 0)
+				else if (PiperParams.OutputChunkSize > 0)
 				{
 					TArray<TArray<uint8>> Chunks;
 					ChunkByteArray(SafeBytes, PiperParams.OutputChunkSize, Chunks);
@@ -312,12 +286,47 @@ void UPiperComponent::InitializeComponent()
 					AsyncTask(ENamedThreads::GameThread, [&, Chunks]
 					{
 						const int32 Total = Chunks.Num();
-						for (int32 i=0; i< Total; i++)
+						for (int32 i = 0; i < Total; i++)
 						{
-							auto& Chunk =  Chunks[i];
+							auto& Chunk = Chunks[i];
 							OnChunkGenerated.Broadcast(Chunk, i, Total);
 						}
 					});
+				}
+			}
+
+			if (PiperParams.bOutputSoundWaves)
+			{
+				//Convert to Wavbytes on bg thread
+				TArray<uint8> WavBytes = PCMToWav(SafeBytes, PiperParams.SampleRate, PiperParams.Channels);
+
+				FString Transcript;
+				TextQueue.Dequeue(Transcript);
+
+				//Convert and emit on game thread - todo: optimization of pre-gen soundwave on game thread, then just async convert
+				AsyncTask(ENamedThreads::GameThread, [&, WavBytes, Transcript, SafeBytes]
+				{
+					//Convert to usoundwave
+					USoundWave* SoundWave = WavToSoundWave(WavBytes);
+
+					FSWSoundData SoundData;
+					SoundData.SoundWave = SoundWave;
+					SoundData.Transcript = Transcript;
+					SoundData.Duration = SoundWave->GetDuration();
+					if (PiperParams.bOutputBytes)
+					{
+						SoundData.PCMBytes = SafeBytes;
+						SoundData.ByteOutputSampleRate = PiperParams.ByteOutputSampleRate;
+					}
+					OnAudioGenerated.Broadcast(SoundData);
+				});
+
+				//after emitting but on piper thread, save if needed to disk
+				if (PiperParams.bSaveAudioToDisk)
+				{
+					FString SafeFileName = MakeSafeFilename(Transcript);
+					FString OutputPath = FPaths::ProjectSavedDir() / PiperParams.AudioSavePath / SafeFileName + TEXT(".wav");
+					FFileHelper::SaveArrayToFile(WavBytes, *OutputPath);
 				}
 			}
 		}

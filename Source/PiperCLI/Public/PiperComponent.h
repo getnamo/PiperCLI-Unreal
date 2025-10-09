@@ -2,6 +2,7 @@
 
 #include "CLIProcessComponent.h"
 #include "Sound/SoundWaveProcedural.h"
+#include "SoundWaveQueueComponent.h"
 #include "PiperComponent.generated.h"
 
 USTRUCT(BlueprintType)
@@ -57,7 +58,7 @@ struct FPiperParams
 	int32 OutputChunkSize = -1;
 };
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FPiperOnGeneratedAudioSignature, USoundWave*, GeneratedSound, const FString&, Transcript);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FPiperOnGeneratedAudioSignature, const FSWSoundData&, GeneratedSoundData);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FPiperOutputChunkSignature, const TArray<uint8>&, Buffer, int32, ChunkIndex, int32, TotalChunks);
 
 UCLASS(BlueprintType, ClassGroup = "CLI", meta = (BlueprintSpawnableComponent))

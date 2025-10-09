@@ -30,12 +30,17 @@ int32 USoundWaveQueueComponent::GetQueueDepth()
 
 void USoundWaveQueueComponent::QueueSound(USoundWave* Sound, const FString& Transcript)
 {
-	FSWTranscribedSound SoundData;
-	SoundData.Sound = Sound;
-	SoundData.Transcription = Transcript;
+	FSWSoundData SoundData;
+	SoundData.SoundWave = Sound;
+	SoundData.Transcript = Transcript;
 
+	QueueSoundData(SoundData);
+}
+
+void USoundWaveQueueComponent::QueueSoundData(const FSWSoundData& SoundData)
+{
 	SoundQueue.Enqueue(SoundData);
-	SoundRefStorage.Add(Sound);
+	SoundRefStorage.Add(SoundData.SoundWave);
 	PlayNextSoundInQueue();
 }
 
@@ -69,11 +74,11 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 		return;
 	}
 
-	FSWTranscribedSound SoundData;
+	FSWSoundData SoundData;
 
 	bool bQueueIsNotEmpty = SoundQueue.Dequeue(SoundData);
 
-	USoundWave* Sound = SoundData.Sound;
+	USoundWave* Sound = SoundData.SoundWave;
 
 	//Nothing left in queue - exit
 	if (!bQueueIsNotEmpty)
@@ -85,7 +90,7 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 	//Reset playback info
 	LastEstimatedSpokenWord = TEXT("");
 	PlaybackStateInfo.FullDuration = Sound->Duration;
-	PlaybackStateInfo.SectionText = SoundData.Transcription;
+	PlaybackStateInfo.SectionText = SoundData.Transcript;
 
 	if (bAutoPlayOnTarget)
 	{
@@ -158,12 +163,12 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 			PlaybackStateInfo.bIsPlaying = true;
 
 			//Notify that next sound is playing
-			OnNextSoundBeginPlay.Broadcast(Sound);
+			OnNextSoundBeginPlay.Broadcast(SoundData);
 
 			//Fallback option that works: wait based
 			if (bUsePlayTimeBasedQueueHandling)
 			{
-				const FString SectionText = SoundData.Transcription;
+				const FString SectionText = SoundData.Transcript;
 				// Set the timer with a lambda function
 				GetWorld()->GetTimerManager().SetTimer(DelayTimerHandle, [this, SectionText]()
 				{
