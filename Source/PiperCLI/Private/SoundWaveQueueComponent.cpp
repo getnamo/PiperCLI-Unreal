@@ -92,7 +92,7 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 	PlaybackStateInfo.FullDuration = Sound->Duration;
 	PlaybackStateInfo.SectionText = SoundData.Transcript;
 
-	if (bAutoPlayOnTarget)
+	if (Settings.bAutoPlayOnTarget)
 	{
 		//3d in-world playback
 		if (Target)
@@ -107,7 +107,7 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 					EAttachLocation::SnapToTarget,
 					true);
 
-				if(!bUsePlayTimeBasedQueueHandling)
+				if(!Settings.bUsePlayTimeBasedQueueHandling)
 				{
 					AudioComponent->OnAudioFinishedNative.AddLambda([this](UAudioComponent* FinishedComponent)
 					{
@@ -147,7 +147,7 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 				AudioComponent->SetSound(Sound);
 			}
 
-			AudioComponent->AttenuationSettings = AttenuationSettings;
+			AudioComponent->AttenuationSettings = Settings.AttenuationSettings;
 
 			//now that it's referred elsewhere, remove it from queue storage
 			SoundRefStorage.Remove(Sound);
@@ -166,7 +166,7 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 			OnNextSoundBeginPlay.Broadcast(SoundData);
 
 			//Fallback option that works: wait based
-			if (bUsePlayTimeBasedQueueHandling)
+			if (Settings.bUsePlayTimeBasedQueueHandling)
 			{
 				const FString SectionText = SoundData.Transcript;
 				// Set the timer with a lambda function
@@ -346,7 +346,7 @@ void USoundWaveQueueComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	//do audio progression here if we use time based playback
-	if (bUsePlayTimeBasedQueueHandling && PlaybackStateInfo.bIsPlaying)
+	if (Settings.bUsePlayTimeBasedQueueHandling && PlaybackStateInfo.bIsPlaying)
 	{
 		float Now = GetWorld()->GetTimeSeconds();
 		PlaybackStateInfo.PlaybackElapsedSeconds = Now - PlaybackStateInfo.PlayStartTime;

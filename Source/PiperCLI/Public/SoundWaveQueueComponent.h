@@ -4,6 +4,23 @@
 #include "Sound/SoundWave.h"
 #include "SoundWaveQueueComponent.generated.h"
 
+USTRUCT(BlueprintType)
+struct FSWQSettings
+{
+	GENERATED_USTRUCT_BODY()
+
+	//Ideally we'd use an on-finished callback
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Properties")
+	bool bUsePlayTimeBasedQueueHandling = true;
+
+	//If false, handle your own playback logic
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Properties")
+	bool bAutoPlayOnTarget = true;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Properties")
+	USoundAttenuation* AttenuationSettings;
+};
+
 //Wrapped data structure to allow easier downstream parsing
 USTRUCT(BlueprintType)
 struct FSWSoundData
@@ -90,20 +107,12 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "SoundWaveQueue Events")
 	FPlaybackStateSignature OnEstimatedWordSpoken;
 
-	//Ideally we'd use an on-finished callback
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Properties")
-	bool bUsePlayTimeBasedQueueHandling = true;
-
-	//If false, handle your own playback logic
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Properties")
-	bool bAutoPlayOnTarget = true;
+	FSWQSettings Settings;
 
 	//Target of our sound source. If null, will play as 2D UI sound
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Properties")
 	USceneComponent* Target;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Properties")
-	USoundAttenuation* AttenuationSettings;
 
 	UPROPERTY(BlueprintReadOnly, Category = "SoundWaveQueue Properties")
 	UAudioComponent* AudioComponent;
