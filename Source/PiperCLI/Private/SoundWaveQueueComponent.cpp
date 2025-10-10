@@ -167,13 +167,12 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 			OnNextSoundBeginPlay.Broadcast(SoundData);
 
 			//Clean up the queue
-
 			if (SoundData.PCMBytes.Num() > 0)
 			{
 				SoundChunkQueue.Clear();
 				SoundChunkQueue.Feed(SoundData.PCMBytes);
 
-				//Grab the lookahead chunk
+				//Grab the lookahead chunk and emit it (leads the byte stream a little vs Soundwave)
 				if (Settings.BeginByteStreamLookaheadChunk > 0)
 				{
 					TArray<uint8> Chunk = SoundChunkQueue.Take(Settings.BeginByteStreamLookaheadChunk);
