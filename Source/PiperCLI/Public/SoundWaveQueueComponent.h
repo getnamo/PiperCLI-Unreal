@@ -24,6 +24,10 @@ struct FSWQSettings
 	//has performance implications
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Settings")
 	bool bStreamEmitBytesIfAvailable = false;
+
+	//on the first byte stream, look ahead by this amount and stream it immediately
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Settings")
+	int32 BeginByteStreamLookaheadChunk = 0;
 };
 
 //Wrapped data structure to allow easier downstream parsing

@@ -172,6 +172,13 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 			{
 				SoundChunkQueue.Clear();
 				SoundChunkQueue.Feed(SoundData.PCMBytes);
+
+				//Grab the lookahead chunk
+				if (Settings.BeginByteStreamLookaheadChunk > 0)
+				{
+					TArray<uint8> Chunk = SoundChunkQueue.Take(Settings.BeginByteStreamLookaheadChunk);
+					OnSyncedSoundChunk.Broadcast(Chunk);
+				}
 			}
 
 			//Fallback option that works: wait based
