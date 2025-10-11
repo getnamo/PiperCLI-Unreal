@@ -166,7 +166,7 @@ public:
 	void ResumePlay();
 
 	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Functions")
-	void ClearQueue();
+	void ClearQueue(bool bStopAllAudio = true);
 
 	//Call this after you change the target scene component
 	UFUNCTION(BlueprintCallable, Category = "SoundWaveQueue Functions")

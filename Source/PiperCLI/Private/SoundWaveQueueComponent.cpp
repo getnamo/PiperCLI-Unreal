@@ -217,8 +217,17 @@ bool USoundWaveQueueComponent::IsPlaying()
 	return PlaybackStateInfo.bIsPlaying;
 }
 
-void USoundWaveQueueComponent::ClearQueue()
+void USoundWaveQueueComponent::ClearQueue(bool bStopAllAudio)
 {
+	if (bStopAllAudio)
+	{
+		if (PlaybackStateInfo.bIsPlaying)
+		{
+			Stop();
+		}
+		SoundChunkQueue.Clear();
+	}
+
 	SoundQueue.Empty();
 }
 
