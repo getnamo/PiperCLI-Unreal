@@ -59,6 +59,7 @@ struct FSWSoundData
 	int32 ByteOutputSampleRate = -1;
 };
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FVoidSignature);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSoundWaveSignature, USoundWave*, Sound);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSoundDataSignature, const FSWSoundData&, SoundData);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSoundChunkSignature, const TArray<uint8>&, SoundChunk);
@@ -108,6 +109,10 @@ public:
 	//Called when the next audio is being played, can be used to interrupt or do additional processing if needed
 	UPROPERTY(BlueprintAssignable, Category = "SoundWaveQueue Events")
 	FSoundDataSignature OnNextSoundBeginPlay;
+
+	//To know when you've stopped playing audio
+	UPROPERTY(BlueprintAssignable, Category = "SoundWaveQueue Events")
+	FVoidSignature OnQueueFinishedPlaying;
 
 	UPROPERTY(BlueprintAssignable, Category = "SoundWaveQueue Events")
 	FAudioComponentSignature OnAudioComponentCreated;

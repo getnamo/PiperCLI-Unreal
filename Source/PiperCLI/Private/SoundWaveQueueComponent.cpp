@@ -84,6 +84,7 @@ void USoundWaveQueueComponent::PlayNextSoundInQueue()
 	if (!bQueueIsNotEmpty)
 	{
 		PlaybackStateInfo.bIsPlaying = false;
+		OnQueueFinishedPlaying.Broadcast();
 		return;
 	}
 
