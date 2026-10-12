@@ -21,6 +21,12 @@ UPiperComponent::UPiperComponent(const FObjectInitializer& init) : UCLIProcessCo
 	CLIParams.bLaunchReallyHidden = true;
 	CLIParams.bOutputToGameThread = false;
 
+	//Wait for piper's output instead of polling (no busy core), and queue input sent before piper is up
+	//(e.g. right after BeginPlay) instead of dropping it. Both also make the pipe threads join when the
+	//component goes away. Requires CLISystem 1.4.0.
+	CLIParams.bBlockingRead = true;
+	CLIParams.bAsyncStdinWrites = true;
+
 	SyncCLIParams();
 }
 
@@ -230,21 +236,37 @@ void UPiperComponent::SendInput(const FString& Text)
 	Super::SendInput(Text);
 }
 
+void UPiperComponent::StopProcess()
+{
+	Super::StopProcess();
+
+	//Lines piper hadn't finished won't produce audio: drop their transcripts so later clips stay matched
+	FScopeLock Lock(&TextQueueLock);
+	TextQueue.Empty();
+}
+
 void UPiperComponent::InitializeComponent()
 {
 	Super::InitializeComponent();
 
-	ProcessHandler->OnProcessOutput = [this](const int32 ProcessId, const FString& OutputString)
+	//These run on CLISystem's pipe thread, which is joined before the handler is released, so `this` is
+	//valid inside them. Work sent to the game thread copies what it needs and holds only a weak pointer:
+	//the component may be gone by the time it runs.
+	TWeakObjectPtr<UPiperComponent> WeakThis(this);
+
+	ProcessHandler->OnProcessOutput = [WeakThis](const int32 ProcessId, const FString& OutputString)
 	{
-		//Because we do not process bytes on game thread we need this wrapper here
-		AsyncTask(ENamedThreads::GameThread, [&]
+		AsyncTask(ENamedThreads::GameThread, [WeakThis, OutputString]
 		{
-			OnOutputText.Broadcast(OutputString);
+			if (UPiperComponent* Self = WeakThis.Get())
+			{
+				Self->OnOutputText.Broadcast(OutputString);
+			}
 		});
 	};
 
 	//We handle byte output processing differently for piper, auto-categorize output as text or string based on string length
-	ProcessHandler->OnProcessOutputBytes = [this](const int32 ProcessId, const TArray<uint8>& OutputBytes)
+	ProcessHandler->OnProcessOutputBytes = [this, WeakThis](const int32 ProcessId, const TArray<uint8>& OutputBytes)
 	{
 		FString ResultString;
 		FFileHelper::BufferToString(ResultString, OutputBytes.GetData(), OutputBytes.Num());
@@ -252,85 +274,100 @@ void UPiperComponent::InitializeComponent()
 		//This was a text message, not a piper pcm buffer
 		if (ResultString.Len() == OutputBytes.Num())
 		{
-			AsyncTask(ENamedThreads::GameThread, [&, ResultString]
+			AsyncTask(ENamedThreads::GameThread, [WeakThis, ResultString]
 			{
-				OnOutputText.Broadcast(ResultString);
+				if (UPiperComponent* Self = WeakThis.Get())
+				{
+					Self->OnOutputText.Broadcast(ResultString);
+				}
 			});
+			return;
 		}
-		else
+
+		const FPiperParams Params = PiperParams;
+
+		//Byte/chunk output, re-sampled if requested. The SoundWave below always uses piper's own PCM and rate.
+		TArray<uint8> ByteOutput;
+		if (Params.bOutputBytes)
 		{
-			//Copy bytes for bg tasks
-			TArray<uint8> SafeBytes = OutputBytes;
-
-			if (PiperParams.bOutputBytes)
+			ByteOutput = OutputBytes;
+			if (Params.ByteOutputSampleRate > 0 && Params.ByteOutputSampleRate != Params.SampleRate)
 			{
-				//re-sampling only affects binary/chunk output
-				if (PiperParams.ByteOutputSampleRate != PiperParams.SampleRate)
-				{
-					ResamplePCM(OutputBytes, PiperParams.SampleRate, PiperParams.ByteOutputSampleRate, SafeBytes);
-				}
-
-				if (PiperParams.OutputChunkSize == -1)
-				{
-					AsyncTask(ENamedThreads::GameThread, [&, SafeBytes]
-					{
-						OnOutputBytes.Broadcast(OutputBytes);
-					});
-				}
-				//if we have a positive chunk size, chunk our array and output each chunk as a callback
-				else if (PiperParams.OutputChunkSize > 0)
-				{
-					TArray<TArray<uint8>> Chunks;
-					ChunkByteArray(SafeBytes, PiperParams.OutputChunkSize, Chunks);
-
-					AsyncTask(ENamedThreads::GameThread, [&, Chunks]
-					{
-						const int32 Total = Chunks.Num();
-						for (int32 i = 0; i < Total; i++)
-						{
-							auto& Chunk = Chunks[i];
-							OnChunkGenerated.Broadcast(Chunk, i, Total);
-						}
-					});
-				}
+				ResamplePCM(OutputBytes, Params.SampleRate, Params.ByteOutputSampleRate, ByteOutput);
 			}
 
-			if (PiperParams.bOutputSoundWaves)
+			if (Params.OutputChunkSize == -1)
 			{
-				//Convert to Wavbytes on bg thread
-				TArray<uint8> WavBytes = PCMToWav(SafeBytes, PiperParams.SampleRate, PiperParams.Channels);
-
-				FString Transcript;
-				TextQueue.Dequeue(Transcript);
-
-				//Convert and emit on game thread - todo: optimization of pre-gen soundwave on game thread, then just async convert
-				AsyncTask(ENamedThreads::GameThread, [&, WavBytes, Transcript, SafeBytes]
+				AsyncTask(ENamedThreads::GameThread, [WeakThis, ByteOutput]
 				{
-					//Convert to usoundwave
-					USoundWave* SoundWave = WavToSoundWave(WavBytes);
-
-					FSWSoundData SoundData;
-					SoundData.SoundWave = SoundWave;
-					SoundData.Transcript = Transcript;
-					SoundData.Duration = SoundWave->GetDuration();
-					if (PiperParams.bOutputBytes)
+					if (UPiperComponent* Self = WeakThis.Get())
 					{
-						SoundData.PCMBytes = SafeBytes;
-						SoundData.ByteOutputSampleRate = PiperParams.ByteOutputSampleRate;
+						Self->OnOutputBytes.Broadcast(ByteOutput);
 					}
-					OnAudioGenerated.Broadcast(SoundData);
 				});
+			}
+			//if we have a positive chunk size, chunk our array and output each chunk as a callback
+			else if (Params.OutputChunkSize > 0)
+			{
+				TArray<TArray<uint8>> Chunks;
+				ChunkByteArray(ByteOutput, Params.OutputChunkSize, Chunks);
 
-				//after emitting but on piper thread, save if needed to disk
-				if (PiperParams.bSaveAudioToDisk)
+				AsyncTask(ENamedThreads::GameThread, [WeakThis, Chunks = MoveTemp(Chunks)]
 				{
-					FString SafeFileName = MakeSafeFilename(Transcript);
-					FString OutputPath = FPaths::ProjectSavedDir() / PiperParams.AudioSavePath / SafeFileName + TEXT(".wav");
-					FFileHelper::SaveArrayToFile(WavBytes, *OutputPath);
-				}
+					UPiperComponent* Self = WeakThis.Get();
+					const int32 Total = Chunks.Num();
+					for (int32 i = 0; Self && i < Total; i++)
+					{
+						Self->OnChunkGenerated.Broadcast(Chunks[i], i, Total);
+					}
+				});
 			}
 		}
-		
+
+		//Each clip consumes the transcript of the line that produced it
+		FString Transcript;
+		{
+			FScopeLock Lock(&TextQueueLock);
+			TextQueue.Dequeue(Transcript);
+		}
+
+		if (Params.bOutputSoundWaves)
+		{
+			//Convert to Wavbytes on bg thread
+			TArray<uint8> WavBytes = PCMToWav(OutputBytes, Params.SampleRate, Params.Channels);
+
+			//Convert and emit on game thread - todo: optimization of pre-gen soundwave on game thread, then just async convert
+			AsyncTask(ENamedThreads::GameThread, [WeakThis, WavBytes, Transcript, ByteOutput, Params]
+			{
+				UPiperComponent* Self = WeakThis.Get();
+				if (!Self)
+				{
+					return;
+				}
+
+				//Convert to usoundwave
+				USoundWave* SoundWave = Self->WavToSoundWave(WavBytes);
+
+				FSWSoundData SoundData;
+				SoundData.SoundWave = SoundWave;
+				SoundData.Transcript = Transcript;
+				SoundData.Duration = SoundWave->GetDuration();
+				if (Params.bOutputBytes)
+				{
+					SoundData.PCMBytes = ByteOutput;
+					SoundData.ByteOutputSampleRate = Params.ByteOutputSampleRate;
+				}
+				Self->OnAudioGenerated.Broadcast(SoundData);
+			});
+
+			//after emitting but on piper thread, save if needed to disk
+			if (Params.bSaveAudioToDisk)
+			{
+				FString SafeFileName = MakeSafeFilename(Transcript);
+				FString OutputPath = FPaths::ProjectSavedDir() / Params.AudioSavePath / SafeFileName + TEXT(".wav");
+				FFileHelper::SaveArrayToFile(WavBytes, *OutputPath);
+			}
+		}
 	};
 }
 

@@ -94,6 +94,8 @@ public:
 
 	virtual void SendInput(const FString& Text) override;
 
+	virtual void StopProcess() override;
+
 	//UActorComponent overrides
 	virtual void InitializeComponent() override;
 	virtual void UninitializeComponent() override;
@@ -106,7 +108,10 @@ public:
 
 protected:
 
+	//Transcripts of lines sent to piper, matched to audio in order. Enqueued on the game thread; dequeued on
+	//the pipe thread and emptied on stop, so consumers take TextQueueLock.
 	TQueue<FString> TextQueue;
+	FCriticalSection TextQueueLock;
 
 	void SetSoundWaveFromWavBytes(USoundWaveProcedural* InSoundWave, const TArray<uint8>& InBytes);
 	FString MakeSafeFilename(const FString& InputText);

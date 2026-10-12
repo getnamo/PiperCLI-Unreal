@@ -38,7 +38,8 @@ public class PiperCLI : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
-				"CLISystem"
+				"CLISystem",
+				"Json"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
