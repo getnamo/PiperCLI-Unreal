@@ -11,7 +11,7 @@ struct FSWQSettings
 	GENERATED_USTRUCT_BODY()
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Settings")
-	USoundAttenuation* AttenuationSettings;
+	USoundAttenuation* AttenuationSettings = nullptr;
 
 	//Ideally we'd use an on-finished callback
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SoundWaveQueue Settings")
@@ -38,7 +38,7 @@ struct FSWSoundData
 
 	//Wrapped Soundwave for playback
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Sound Data")
-	USoundWave* SoundWave;
+	USoundWave* SoundWave = nullptr;
 
 	//Optional extra data used for matching emits
 
