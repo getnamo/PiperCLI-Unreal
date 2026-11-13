@@ -4,7 +4,7 @@
 #include "Sound/SoundWaveProcedural.h"
 #include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
-#include "HAL/PlatformFilemanager.h"
+#include "HAL/PlatformFileManager.h"
 
 
 UPiperComponent::UPiperComponent(const FObjectInitializer& init) : UCLIProcessComponent(init)
